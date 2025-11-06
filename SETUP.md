@@ -68,6 +68,15 @@ docker-compose logs -f
 
 ## Escolha de Modelos
 
+### Modelo OCR - AllenAI OlmOCR
+
+- **allenai/olmOCR-2-7B-1025-FP8** (padrão)
+  - Estado da arte em OCR para documentos matemáticos
+  - Suporte para LaTeX, tabelas e escrita à mão
+  - Requer ~10-12GB de VRAM
+  - Servido via vLLM para máxima eficiência
+  - [Documentação oficial](https://github.com/allenai/olmocr)
+
 ### Modelos LLM Recomendados para Matemática
 
 1. **Qwen2.5-Math-7B-Instruct** (padrão)
@@ -81,12 +90,6 @@ docker-compose logs -f
 3. **Llama-3.2-3B-Instruct**
    - Menor, mais rápido
    - Requer ~6GB de VRAM
-
-### Modelos OCR
-
-- **OlmOCR-GPT4o-mini** (padrão)
-  - Excelente para texto matemático
-  - Suporte para LaTeX
 
 ## Resolução de Problemas
 

@@ -11,7 +11,7 @@ if ! command -v docker &> /dev/null; then
 fi
 
 # Check if Docker Compose is installed
-if ! command -v docker-compose &> /dev/null; then
+if ! command -v docker compose &> /dev/null; then
     echo "❌ Docker Compose is not installed. Please install Docker Compose first."
     exit 1
 fi
@@ -59,10 +59,10 @@ fi
 
 # Build and start services
 echo "📦 Building Docker images..."
-docker-compose build
+docker compose build
 
 echo "🔧 Starting services..."
-docker-compose up -d
+docker compose up -d
 
 # Wait for services to be ready
 echo "⏳ Waiting for services to start..."
@@ -95,7 +95,7 @@ echo "📚 Access the application at:"
 echo "   Frontend: http://localhost:3000"
 echo "   API Docs: http://localhost:8000/docs"
 echo ""
-echo "📊 View logs with: docker-compose logs -f"
-echo "🛑 Stop with: docker-compose down"
+echo "📊 View logs with: docker compose logs -f"
+echo "🛑 Stop with: docker compose down"
 echo ""
 echo "Note: Model servers may take a few minutes to fully initialize on first run."

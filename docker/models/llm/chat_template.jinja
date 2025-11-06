@@ -1,0 +1,14 @@
+{% for message in messages %}
+{%- if message['role'] == 'system' -%}
+Sistema: {{ message['content'] }}
+
+{% elif message['role'] == 'user' %}
+Aluno: {{ message['content'] }}
+
+{% elif message['role'] == 'assistant' %}
+Professor: {{ message['content'] }}
+
+{% endif %}
+{% endfor %}
+{% if add_generation_prompt %}
+Professor: {% endif %}

@@ -1,83 +1,60 @@
-"""OlmOCR2 Server for mathematical text extraction"""
+"""OlmOCR Server Wrapper for vLLM API"""
 
 from fastapi import FastAPI, HTTPException, File, UploadFile
 from fastapi.responses import JSONResponse
 from PIL import Image
-import torch
-from transformers import AutoModel, AutoTokenizer, AutoProcessor
-import io
 import base64
+import io
 import logging
+import httpx
 import os
 from typing import Optional, Dict, Any
-import asyncio
 from contextlib import asynccontextmanager
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Global variables for model
-model = None
-processor = None
-tokenizer = None
-device = None
+# vLLM server configuration
+VLLM_URL = "http://localhost:8001/v1"
+MODEL_NAME = "olmocr"
+
+# Global HTTP client
+client = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Initialize and cleanup model"""
-    global model, processor, tokenizer, device
+    """Initialize and cleanup resources"""
+    global client
     
-    try:
-        logger.info("Loading OlmOCR2 model...")
-        
-        # Set device
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        logger.info(f"Using device: {device}")
-        
-        # Model name from environment or default
-        model_name = os.getenv("MODEL_NAME", "allenai/OlmOCR-GPT4o-mini")
-        
-        # Load model components
-        model = AutoModel.from_pretrained(
-            model_name,
-            trust_remote_code=True,
-            torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32
-        ).to(device)
-        
-        processor = AutoProcessor.from_pretrained(
-            model_name,
-            trust_remote_code=True
-        )
-        
-        tokenizer = AutoTokenizer.from_pretrained(
-            model_name,
-            trust_remote_code=True
-        )
-        
-        # Set model to evaluation mode
-        model.eval()
-        
-        logger.info("OlmOCR2 model loaded successfully!")
-        
-    except Exception as e:
-        logger.error(f"Failed to load model: {str(e)}")
-        raise
+    logger.info("Starting OlmOCR wrapper service...")
+    client = httpx.AsyncClient(timeout=120.0)
+    
+    # Wait for vLLM server to be ready
+    import time
+    for _ in range(30):
+        try:
+            response = await client.get(f"{VLLM_URL}/models")
+            if response.status_code == 200:
+                logger.info("vLLM server is ready")
+                break
+        except:
+            pass
+        time.sleep(2)
     
     yield
     
     # Cleanup
-    logger.info("Shutting down OlmOCR2 server...")
-    if model:
-        del model
-    torch.cuda.empty_cache()
+    logger.info("Shutting down OlmOCR wrapper service...")
+    if client:
+        await client.aclose()
 
 
 # Create FastAPI app
 app = FastAPI(
-    title="OlmOCR2 Server",
-    description="OCR service for mathematical text extraction",
+    title="OlmOCR Service",
+    description="OCR service using AllenAI OlmOCR for mathematical text extraction",
     version="1.0.0",
     lifespan=lifespan
 )
@@ -87,59 +64,126 @@ app = FastAPI(
 async def root():
     """Root endpoint"""
     return {
-        "service": "OlmOCR2 Server",
-        "status": "operational",
-        "device": str(device) if device else "not initialized"
+        "service": "OlmOCR Service",
+        "model": MODEL_NAME,
+        "status": "operational"
     }
 
 
 @app.get("/health")
 async def health():
     """Health check endpoint"""
-    if model is None:
-        return JSONResponse(
-            status_code=503,
-            content={"status": "unhealthy", "error": "Model not loaded"}
-        )
-    return {"status": "healthy"}
+    try:
+        # Check vLLM server health
+        response = await client.get(f"{VLLM_URL}/health")
+        if response.status_code == 200:
+            return {"status": "healthy", "vllm": "connected"}
+    except:
+        pass
+    
+    return JSONResponse(
+        status_code=503,
+        content={"status": "unhealthy", "error": "vLLM server not responding"}
+    )
 
 
 @app.post("/extract")
 async def extract_text(
     file: UploadFile = File(...),
     extract_math: bool = True,
-    extract_tables: bool = True
+    markdown: bool = True
 ):
     """
-    Extract text from an image
+    Extract text from an image using OlmOCR
     
     Args:
-        file: Image file
+        file: Image file (PNG, JPEG) or PDF
         extract_math: Whether to extract mathematical formulas
-        extract_tables: Whether to extract tables
+        markdown: Return result as markdown
     
     Returns:
         Extracted text and metadata
     """
-    if model is None:
-        raise HTTPException(status_code=503, detail="Model not loaded")
-    
     try:
-        # Read image
+        # Read file content
         contents = await file.read()
-        image = Image.open(io.BytesIO(contents))
         
-        # Convert to RGB if necessary
-        if image.mode != "RGB":
-            image = image.convert("RGB")
+        # Determine file type
+        file_ext = file.filename.lower().split('.')[-1] if '.' in file.filename else ''
         
-        # Process image
-        result = await process_image(image, extract_math, extract_tables)
-        
-        return result
-        
+        # For images, convert to base64
+        if file_ext in ['png', 'jpg', 'jpeg']:
+            # Open and convert image
+            image = Image.open(io.BytesIO(contents))
+            
+            # Convert to RGB if necessary
+            if image.mode != "RGB":
+                image = image.convert("RGB")
+            
+            # Convert to base64
+            buffered = io.BytesIO()
+            image.save(buffered, format="PNG")
+            img_base64 = base64.b64encode(buffered.getvalue()).decode()
+            
+            # Create the prompt for OlmOCR
+            # OlmOCR expects specific formatting
+            messages = [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/png;base64,{img_base64}"
+                            }
+                        },
+                        {
+                            "type": "text",
+                            "text": "Convert this image to markdown format, preserving all mathematical formulas, tables, and formatting."
+                        }
+                    ]
+                }
+            ]
+            
+            # Call vLLM API
+            response = await client.post(
+                f"{VLLM_URL}/chat/completions",
+                json={
+                    "model": MODEL_NAME,
+                    "messages": messages,
+                    "temperature": 0.1,
+                    "max_tokens": 4096,
+                    "stream": False
+                }
+            )
+            
+            if response.status_code != 200:
+                raise HTTPException(status_code=response.status_code, detail="vLLM API error")
+            
+            result = response.json()
+            extracted_text = result["choices"][0]["message"]["content"]
+            
+            return {
+                "text": extracted_text,
+                "format": "markdown" if markdown else "text",
+                "has_math": "$$" in extracted_text or "$" in extracted_text,
+                "source": file.filename
+            }
+            
+        elif file_ext == 'pdf':
+            # For PDFs, we would need to use the olmocr pipeline
+            # For now, return an error suggesting to use the pipeline directly
+            raise HTTPException(
+                status_code=400,
+                detail="PDF processing requires using the olmocr pipeline. Please convert PDF pages to images first."
+            )
+        else:
+            raise HTTPException(status_code=400, detail=f"Unsupported file type: {file_ext}")
+            
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Error processing image: {str(e)}")
+        logger.error(f"Error processing file: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -147,7 +191,7 @@ async def extract_text(
 async def extract_text_base64(
     image_base64: str,
     extract_math: bool = True,
-    extract_tables: bool = True
+    markdown: bool = True
 ):
     """
     Extract text from a base64 encoded image
@@ -155,155 +199,78 @@ async def extract_text_base64(
     Args:
         image_base64: Base64 encoded image
         extract_math: Whether to extract mathematical formulas
-        extract_tables: Whether to extract tables
+        markdown: Return result as markdown
     
     Returns:
         Extracted text and metadata
     """
-    if model is None:
-        raise HTTPException(status_code=503, detail="Model not loaded")
-    
     try:
-        # Decode base64 image
-        image_bytes = base64.b64decode(image_base64)
-        image = Image.open(io.BytesIO(image_bytes))
+        # Create messages for OlmOCR
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/png;base64,{image_base64}"
+                        }
+                    },
+                    {
+                        "type": "text",
+                        "text": "Convert this image to markdown format, preserving all mathematical formulas, tables, and formatting."
+                    }
+                ]
+            }
+        ]
         
-        # Convert to RGB if necessary
-        if image.mode != "RGB":
-            image = image.convert("RGB")
+        # Call vLLM API
+        response = await client.post(
+            f"{VLLM_URL}/chat/completions",
+            json={
+                "model": MODEL_NAME,
+                "messages": messages,
+                "temperature": 0.1,
+                "max_tokens": 4096,
+                "stream": False
+            }
+        )
         
-        # Process image
-        result = await process_image(image, extract_math, extract_tables)
+        if response.status_code != 200:
+            raise HTTPException(status_code=response.status_code, detail="vLLM API error")
         
-        return result
+        result = response.json()
+        extracted_text = result["choices"][0]["message"]["content"]
         
+        # Parse for math formulas
+        formulas = []
+        if extract_math:
+            import re
+            # Find inline math $...$
+            inline_pattern = r'\$([^\$]+)\$'
+            inline_matches = re.findall(inline_pattern, extracted_text)
+            formulas.extend([{"type": "inline", "formula": f} for f in inline_matches])
+            
+            # Find display math $$...$$ 
+            display_pattern = r'\$\$([^\$]+)\$\$'
+            display_matches = re.findall(display_pattern, extracted_text)
+            formulas.extend([{"type": "display", "formula": f} for f in display_matches])
+        
+        return {
+            "text": extracted_text,
+            "format": "markdown" if markdown else "text",
+            "has_math": len(formulas) > 0,
+            "formulas": formulas if extract_math else []
+        }
+        
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error processing base64 image: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-async def process_image(
-    image: Image.Image,
-    extract_math: bool = True,
-    extract_tables: bool = True
-) -> Dict[str, Any]:
-    """
-    Process image and extract text
-    
-    Args:
-        image: PIL Image
-        extract_math: Whether to extract mathematical formulas
-        extract_tables: Whether to extract tables
-    
-    Returns:
-        Dictionary with extracted content
-    """
-    try:
-        # Prepare inputs
-        inputs = processor(images=image, return_tensors="pt").to(device)
-        
-        # Generate predictions
-        with torch.no_grad():
-            # Set generation parameters
-            generation_config = {
-                "max_new_tokens": 1024,
-                "temperature": 0.1,
-                "do_sample": False,
-                "num_beams": 1,
-            }
-            
-            # Generate text
-            outputs = model.generate(
-                **inputs,
-                **generation_config
-            )
-            
-            # Decode output
-            text = tokenizer.decode(outputs[0], skip_special_tokens=True)
-        
-        # Parse output for math and tables if needed
-        result = {
-            "text": text,
-            "has_math": False,
-            "has_tables": False,
-            "formulas": [],
-            "tables": []
-        }
-        
-        if extract_math:
-            # Extract LaTeX formulas
-            formulas = extract_latex_formulas(text)
-            if formulas:
-                result["has_math"] = True
-                result["formulas"] = formulas
-        
-        if extract_tables:
-            # Extract table data
-            tables = extract_table_data(text)
-            if tables:
-                result["has_tables"] = True
-                result["tables"] = tables
-        
-        return result
-        
-    except Exception as e:
-        logger.error(f"Error in process_image: {str(e)}")
-        raise
-
-
-def extract_latex_formulas(text: str) -> list:
-    """Extract LaTeX formulas from text"""
-    formulas = []
-    
-    # Look for inline math $...$
-    import re
-    inline_pattern = r'\$([^\$]+)\$'
-    inline_matches = re.findall(inline_pattern, text)
-    formulas.extend([{"type": "inline", "formula": f} for f in inline_matches])
-    
-    # Look for display math $$...$$ or \[...\]
-    display_pattern = r'\$\$([^\$]+)\$\$|\\\[([^\]]+)\\\]'
-    display_matches = re.findall(display_pattern, text)
-    for match in display_matches:
-        formula = match[0] if match[0] else match[1]
-        formulas.append({"type": "display", "formula": formula})
-    
-    return formulas
-
-
-def extract_table_data(text: str) -> list:
-    """Extract table data from text"""
-    tables = []
-    
-    # Simple table detection based on pipe separators or aligned columns
-    lines = text.strip().split('\n')
-    current_table = []
-    
-    for line in lines:
-        if '|' in line or '\t' in line:
-            # Potential table row
-            if '|' in line:
-                cells = [cell.strip() for cell in line.split('|')]
-                cells = [c for c in cells if c]  # Remove empty cells
-            else:
-                cells = [cell.strip() for cell in line.split('\t')]
-            
-            if cells:
-                current_table.append(cells)
-        elif current_table:
-            # End of table
-            if len(current_table) > 1:  # At least 2 rows
-                tables.append(current_table)
-            current_table = []
-    
-    # Add last table if exists
-    if current_table and len(current_table) > 1:
-        tables.append(current_table)
-    
-    return tables
-
-
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.getenv("PORT", 8001))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    # This runs on port 8002 as a wrapper, while vLLM runs on 8001
+    uvicorn.run(app, host="0.0.0.0", port=8002)

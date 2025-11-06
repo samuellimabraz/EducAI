@@ -1,0 +1,23 @@
+# Alternative: Use official OlmOCR docker image with custom wrapper
+FROM alleninstituteforai/olmocr:latest
+
+# Install additional dependencies for API wrapper
+RUN pip install --no-cache-dir \
+    fastapi \
+    uvicorn[standard] \
+    httpx
+
+# Copy wrapper script
+COPY api_wrapper.py /app/api_wrapper.py
+
+WORKDIR /app
+
+# Expose port
+EXPOSE 8001
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=5 \
+    CMD curl -f http://localhost:8001/health || exit 1
+
+# Run API wrapper
+CMD ["python", "api_wrapper.py"]

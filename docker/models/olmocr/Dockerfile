@@ -1,38 +1,27 @@
-# OlmOCR2 Server Dockerfile
-FROM nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04
+# OlmOCR Server using vLLM
+FROM vllm/vllm-openai:latest
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
-ENV DEBIAN_FRONTEND=noninteractive
+ENV MODEL_NAME=allenai/olmOCR-2-7B-1025-FP8
 
-# Install system dependencies
+# Install additional system dependencies for PDF processing
+USER root
 RUN apt-get update && apt-get install -y \
-    python3.11 \
-    python3-pip \
-    git \
+    poppler-utils \
+    ttf-mscorefonts-installer \
+    fonts-crosextra-caladea \
+    fonts-crosextra-carlito \
+    gsfonts \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Set Python 3.11 as default
-RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1
-RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
+# Install OlmOCR package
+RUN pip install --no-cache-dir olmocr[gpu] --extra-index-url https://download.pytorch.org/whl/cu121
 
-# Install Python packages
-RUN pip install --no-cache-dir \
-    torch \
-    torchvision \
-    transformers \
-    accelerate \
-    fastapi \
-    uvicorn[standard] \
-    pillow \
-    numpy
-
-# Install OlmOCR toolkit
-RUN pip install --no-cache-dir git+https://github.com/AukeHaanstra/olmocr.git
-
-# Copy server script
-COPY server.py /app/server.py
+# Create entrypoint script
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 
 WORKDIR /app
 
@@ -43,5 +32,5 @@ EXPOSE 8001
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:8001/health || exit 1
 
-# Run server
-CMD ["python", "server.py"]
+# Run vLLM server
+ENTRYPOINT ["/app/entrypoint.sh"]

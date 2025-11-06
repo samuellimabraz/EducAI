@@ -38,7 +38,9 @@ services:
       - "${OLMOCR_PORT:-8001}:8001"
     environment:
       MODEL_NAME: ${OLMOCR_MODEL:-allenai/olmOCR-2-7B-1025-FP8}
-      MAX_WORKERS: ${OLMOCR_WORKERS:-2}
+      PORT: 8001
+      MAX_MODEL_LEN: ${OLMOCR_MAX_MODEL_LEN:-16384}
+      GPU_MEMORY_UTILIZATION: ${OLMOCR_GPU_MEMORY:-0.9}
     volumes:
       - model_cache:/root/.cache
     deploy:
@@ -52,8 +54,8 @@ services:
       test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 60s
+      retries: 5
+      start_period: 90s
 
   llm-server:
     build:
@@ -93,7 +95,7 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-edumath}:${POSTGRES_PASSWORD:-edumath123}@postgres:5432/${POSTGRES_DB:-edumath_db}
       REDIS_URL: redis://redis:6379
-      OLMOCR_URL: http://olmocr-server:8001
+      OLMOCR_URL: http://olmocr-server:8001/v1
       LLM_URL: http://llm-server:8002
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
       SECRET_KEY: ${SECRET_KEY:-your-secret-key-change-this}

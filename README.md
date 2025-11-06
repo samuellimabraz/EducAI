@@ -63,7 +63,7 @@ The services will be available at:
 - Frontend: http://localhost:3000
 - Backend API: http://localhost:8000
 - API Documentation: http://localhost:8000/docs
-- OlmOCR2 Server: http://localhost:8001
+- OlmOCR Server: http://localhost:8001 (AllenAI OlmOCR via vLLM)
 - LLM Server: http://localhost:8002
 
 ## 📁 Project Structure
@@ -79,8 +79,8 @@ eco103/
 │   ├── public/       # Static assets
 │   └── package.json
 ├── models/           # Model configuration and scripts
-│   ├── olmocr/      # OlmOCR2 setup
-│   └── llm/         # LLM configuration
+│   ├── olmocr/      # AllenAI OlmOCR setup (vLLM)
+│   └── llm/         # LLM configuration (vLLM)
 ├── docker/          # Docker configurations
 │   ├── backend/
 │   ├── frontend/
@@ -238,10 +238,17 @@ This project is licensed under the MIT License - see LICENSE file for details.
 
 ## 🙏 Acknowledgments
 
-- AllenAI for OlmOCR2
+- [AllenAI for OlmOCR](https://github.com/allenai/olmocr) - State-of-the-art OCR for mathematical documents
 - Qwen Team for mathematical LLMs
 - UNIFEI - Federal University of Itajubá
 - Course: Informatics and Society
+
+## 📚 References
+
+### OCR Model
+- **OlmOCR**: [olmOCR: Unlocking Trillions of Tokens in PDFs with Vision Language Models](https://arxiv.org/abs/2502.18443)
+- Model: [allenai/olmOCR-2-7B-1025-FP8](https://huggingface.co/allenai/olmOCR-2-7B-1025-FP8)
+- GitHub: [https://github.com/allenai/olmocr](https://github.com/allenai/olmocr)
 
 ## 📞 Support
 
