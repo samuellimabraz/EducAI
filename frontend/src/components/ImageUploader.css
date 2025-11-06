@@ -1,0 +1,44 @@
+/* Image Uploader Styles */
+.image-uploader {
+  border: 2px dashed #cbd5e0;
+  border-radius: 0.75rem;
+  padding: 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  background: #f7fafc;
+}
+
+.image-uploader:hover {
+  border-color: #667eea;
+  background: #eef2ff;
+}
+
+.image-uploader.drag-active {
+  border-color: #667eea;
+  background: #eef2ff;
+  transform: scale(1.02);
+}
+
+.uploader-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  color: #4a5568;
+}
+
+.uploader-content svg {
+  color: #667eea;
+}
+
+.uploader-content p {
+  margin: 0;
+  font-weight: 500;
+  font-size: 1rem;
+}
+
+.upload-hint {
+  font-size: 0.875rem;
+  color: #718096;
+}

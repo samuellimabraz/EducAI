@@ -1,0 +1,138 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-edumath}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-edumath123}
+      POSTGRES_DB: ${POSTGRES_DB:-edumath_db}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-edumath}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  olmocr-server:
+    build:
+      context: ./docker/models/olmocr
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${OLMOCR_PORT:-8001}:8001"
+    environment:
+      MODEL_NAME: ${OLMOCR_MODEL:-allenai/olmOCR-2-7B-1025-FP8}
+      MAX_WORKERS: ${OLMOCR_WORKERS:-2}
+    volumes:
+      - model_cache:/root/.cache
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  llm-server:
+    build:
+      context: ./docker/models/llm
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${LLM_PORT:-8002}:8002"
+    environment:
+      MODEL_NAME: ${LLM_MODEL:-Qwen/Qwen2.5-Math-7B-Instruct}
+      QUANTIZATION: ${LLM_QUANTIZATION:-awq}
+      MAX_MODEL_LEN: ${MAX_MODEL_LEN:-8192}
+      GPU_MEMORY_UTILIZATION: ${GPU_MEMORY_UTILIZATION:-0.9}
+    volumes:
+      - model_cache:/root/.cache
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-edumath}:${POSTGRES_PASSWORD:-edumath123}@postgres:5432/${POSTGRES_DB:-edumath_db}
+      REDIS_URL: redis://redis:6379
+      OLMOCR_URL: http://olmocr-server:8001
+      LLM_URL: http://llm-server:8002
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      SECRET_KEY: ${SECRET_KEY:-your-secret-key-change-this}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      olmocr-server:
+        condition: service_healthy
+      llm-server:
+        condition: service_healthy
+    volumes:
+      - ./backend/app:/app
+      - uploads:/app/uploads
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        REACT_APP_API_URL: ${REACT_APP_API_URL:-http://localhost:8000}
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    environment:
+      REACT_APP_API_URL: ${REACT_APP_API_URL:-http://localhost:8000}
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+
+volumes:
+  postgres_data:
+  model_cache:
+  uploads:
+
+networks:
+  default:
+    name: edumath-network
