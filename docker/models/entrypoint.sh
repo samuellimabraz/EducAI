@@ -57,6 +57,7 @@ if [[ -n "${API_KEY}" ]]; then CMD="${CMD} --api-key ${API_KEY}"; fi
 if [[ -n "${LIMIT_MM_PER_PROMPT}" ]]; then CMD="${CMD} --limit-mm-per-prompt ${LIMIT_MM_PER_PROMPT}"; fi
 
 # Add flag-based parameters (enable/disable features)
+if [[ "${ASYNC_SCHEDULING}" == "true" ]]; then CMD="${CMD} --async-scheduling"; fi
 if [[ "${TRUST_REMOTE_CODE}" == "true" ]]; then CMD="${CMD} --trust-remote-code"; fi
 if [[ "${ENABLE_CHUNKED_PREFILL}" == "true" ]]; then CMD="${CMD} --enable-chunked-prefill"; fi
 if [[ "${ENABLE_LORA}" == "true" ]]; then CMD="${CMD} --enable-lora"; fi
