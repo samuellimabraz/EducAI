@@ -1,0 +1,20 @@
+FROM vllm/vllm-openai:latest
+ENV VLLM_LOGGING_LEVEL=DEBUG
+ENV VLLM_TRACE_FUNCTION=1
+
+RUN wget https://github.com/vllm-project/vllm/blob/main/vllm/collect_env.py
+
+RUN apt-get update && apt-get install -y \
+    python3 \
+    git \
+    && ln -sf /usr/bin/python3 /usr/bin/python \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
+    && pip install --no-cache-dir git+https://github.com/huggingface/transformers.git \
+    && pip install --no-cache-dir --no-deps --upgrade "flash-attn>=2.6.3" \
+    && rm -rf ~/.cache/pip
+
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
