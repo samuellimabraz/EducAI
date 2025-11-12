@@ -2,21 +2,21 @@ import React from 'react';
 import { Calculator, LineChart, Trash2, MessageSquare } from 'lucide-react';
 import './Sidebar.css';
 
-const Sidebar = ({ 
-  onToggleCalculator, 
-  onToggleGraph, 
-  onClearChat, 
-  showCalculator, 
-  showGraph 
+const Sidebar = ({
+  onToggleCalculator,
+  onToggleGraph,
+  onClearChat,
+  showCalculator,
+  showGraph
 }) => {
   return (
     <div className="sidebar">
       <div className="sidebar-header">
         <h2>🧮 Ferramentas</h2>
       </div>
-      
+
       <div className="sidebar-tools">
-        <button 
+        <button
           className={`tool-button ${showCalculator ? 'active' : ''}`}
           onClick={onToggleCalculator}
           title="Calculadora"
@@ -24,8 +24,8 @@ const Sidebar = ({
           <Calculator size={20} />
           <span>Calculadora</span>
         </button>
-        
-        <button 
+
+        <button
           className={`tool-button ${showGraph ? 'active' : ''}`}
           onClick={onToggleGraph}
           title="Gráficos"
@@ -33,8 +33,8 @@ const Sidebar = ({
           <LineChart size={20} />
           <span>Gráficos</span>
         </button>
-        
-        <button 
+
+        <button
           className="tool-button"
           onClick={onClearChat}
           title="Limpar conversa"
@@ -43,7 +43,7 @@ const Sidebar = ({
           <span>Limpar Chat</span>
         </button>
       </div>
-      
+
       <div className="sidebar-tips">
         <h3>💡 Dicas</h3>
         <ul>

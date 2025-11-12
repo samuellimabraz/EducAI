@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import './Calculator.css';
 
-const Calculator = ({ onResult, onClose }) => {
+const Calculator = ({ onClose }) => {
   const [display, setDisplay] = useState('0');
+  const [expression, setExpression] = useState('');
   const [previousValue, setPreviousValue] = useState(null);
   const [operation, setOperation] = useState(null);
   const [waitingForOperand, setWaitingForOperand] = useState(false);
@@ -22,12 +23,16 @@ const Calculator = ({ onResult, onClose }) => {
 
     if (previousValue === null) {
       setPreviousValue(inputValue);
+      setExpression(`${inputValue} ${nextOperation}`);
     } else if (operation) {
       const currentValue = previousValue || 0;
       const newValue = calculate(currentValue, inputValue, operation);
 
       setDisplay(String(newValue));
       setPreviousValue(newValue);
+      setExpression(`${newValue} ${nextOperation}`);
+    } else {
+      setExpression(`${inputValue} ${nextOperation}`);
     }
 
     setWaitingForOperand(true);
@@ -57,24 +62,17 @@ const Calculator = ({ onResult, onClose }) => {
     if (previousValue !== null && operation) {
       const newValue = calculate(previousValue, inputValue, operation);
       
-      const result = {
-        expression: `${previousValue} ${operation} ${inputValue}`,
-        result: newValue
-      };
-      
+      setExpression(`${previousValue} ${operation} ${inputValue} =`);
       setDisplay(String(newValue));
       setPreviousValue(null);
       setOperation(null);
       setWaitingForOperand(true);
-      
-      if (onResult) {
-        onResult(result);
-      }
     }
   };
 
   const clear = () => {
     setDisplay('0');
+    setExpression('');
     setPreviousValue(null);
     setOperation(null);
     setWaitingForOperand(false);
@@ -83,11 +81,12 @@ const Calculator = ({ onResult, onClose }) => {
   return (
     <div className="calculator">
       <div className="calculator-header">
-        <h3>Calculadora</h3>
+        <h3>Calculator</h3>
         <button className="close-button" onClick={onClose}>
           <X size={20} />
         </button>
       </div>
+      <div className="calculator-expression">{expression || '\u00A0'}</div>
       <div className="calculator-display">{display}</div>
       <div className="calculator-buttons">
         <button className="calc-button function" onClick={clear}>C</button>

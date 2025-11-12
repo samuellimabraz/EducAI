@@ -1,86 +1,312 @@
-/* Graph Visualizer Styles */
+/* Graph Visualizer - Kid-Friendly Math Tool */
 .graph-visualizer {
   background: white;
-  border-radius: 0.75rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
-  min-width: 400px;
+  border: 2px solid #333;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  min-width: 700px;
+  max-width: 900px;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1000;
 }
 
 .graph-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem;
+  padding: 12px 16px;
   background: linear-gradient(135deg, #667eea, #764ba2);
   color: white;
+  border-radius: 6px 6px 0 0;
 }
 
 .graph-header h3 {
   margin: 0;
-  font-size: 1.125rem;
+  font-size: 18px;
+  font-weight: 600;
+  font-family: 'Comic Sans MS', cursive, sans-serif;
 }
 
 .graph-controls {
-  padding: 1rem;
-  background: #f7fafc;
+  padding: 16px;
+  background: #f9f9f9;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 16px;
+}
+
+.function-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.function-item {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.visibility-toggle {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.visibility-toggle:hover {
+  background: #f0f0f0;
 }
 
 .function-input {
-  padding: 0.75rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 0.5rem;
-  font-size: 1rem;
+  flex: 1;
+  padding: 8px 12px;
+  border: 2px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
   outline: none;
-  transition: border-color 0.2s;
+  transition: all 0.2s;
+  font-family: 'Courier New', monospace;
 }
 
 .function-input:focus {
   border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.add-function {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.add-button, .remove-function {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 6px 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.add-button:hover {
+  background: #4caf50;
+  color: white;
+  border-color: #4caf50;
+}
+
+.remove-function:hover {
+  background: #f44336;
+  color: white;
+  border-color: #f44336;
+}
+
+.templates-section {
+  background: white;
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid #e0e0e0;
+}
+
+.templates-label {
+  margin: 0 0 8px 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #666;
+  font-family: 'Comic Sans MS', cursive, sans-serif;
+}
+
+.templates {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.template-button {
+  padding: 6px 12px;
+  background: white;
+  border: 1px solid #667eea;
+  border-radius: 20px;
+  font-size: 12px;
+  color: #667eea;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: 'Comic Sans MS', cursive, sans-serif;
+}
+
+.template-button:hover {
+  background: #667eea;
+  color: white;
 }
 
 .range-controls {
   display: flex;
-  gap: 1rem;
+  gap: 20px;
+  background: white;
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid #e0e0e0;
 }
 
-.range-controls label {
+.range-group {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-size: 0.875rem;
-  color: #4a5568;
+  gap: 8px;
+  flex: 1;
+}
+
+.range-group label {
+  font-size: 13px;
+  color: #666;
+  font-weight: 600;
+  font-family: 'Comic Sans MS', cursive, sans-serif;
 }
 
 .range-input {
-  width: 80px;
-  padding: 0.5rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 0.25rem;
-  font-size: 0.875rem;
+  width: 60px;
+  padding: 6px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: 'Courier New', monospace;
 }
 
-.generate-button {
-  padding: 0.75rem 1.5rem;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+.evaluate-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: white;
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid #e0e0e0;
+}
+
+.evaluate-section label {
+  font-size: 13px;
+  color: #666;
+  font-weight: 600;
+  font-family: 'Comic Sans MS', cursive, sans-serif;
+}
+
+.evaluate-input {
+  width: 80px;
+  padding: 6px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: 'Courier New', monospace;
+}
+
+.evaluate-button {
+  padding: 6px 16px;
+  background: #667eea;
   color: white;
   border: none;
-  border-radius: 0.5rem;
-  font-size: 0.9rem;
-  font-weight: 500;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
+  font-family: 'Comic Sans MS', cursive, sans-serif;
 }
 
-.generate-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+.evaluate-button:hover {
+  background: #5569d8;
+  transform: translateY(-1px);
+}
+
+.evaluation-results {
+  background: #e3f2fd;
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid #90caf9;
+}
+
+.evaluation-results h4 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  color: #1976d2;
+  font-family: 'Comic Sans MS', cursive, sans-serif;
+}
+
+.evaluation-results p {
+  margin: 4px 0;
+  font-size: 13px;
+  font-family: 'Courier New', monospace;
+  color: #333;
+}
+
+.display-options {
+  display: flex;
+  gap: 20px;
+  background: white;
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid #e0e0e0;
+}
+
+.display-options label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #666;
+  cursor: pointer;
+  font-family: 'Comic Sans MS', cursive, sans-serif;
 }
 
 .graph-container {
-  padding: 1rem;
+  padding: 20px;
   background: white;
+  border-radius: 0 0 6px 6px;
+}
+
+.custom-tooltip {
+  background: rgba(255, 255, 255, 0.95);
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.custom-tooltip .tooltip-label {
+  font-weight: 600;
+  margin: 0 0 4px 0;
+  font-size: 12px;
+}
+
+.custom-tooltip p {
+  margin: 2px 0;
+  font-size: 12px;
+  font-family: 'Courier New', monospace;
+}
+
+.close-button {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s;
+  color: white;
+}
+
+.close-button:hover {
+  background: rgba(255, 255, 255, 0.2);
 }

@@ -19,8 +19,8 @@ const ImageUploader = ({ onImageSelect }) => {
   });
 
   return (
-    <div 
-      {...getRootProps()} 
+    <div
+      {...getRootProps()}
       className={`image-uploader ${isDragActive ? 'drag-active' : ''}`}
     >
       <input {...getInputProps()} />
