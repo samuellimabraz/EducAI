@@ -1,259 +1,168 @@
-# EduMath AI - Educational Mathematics Assistant for Elementary Students
+# EducAI - Educational AI Assistant for Elementary Mathematics
 
-## 📚 Project Overview
+<div align="center">
 
-EduMath AI is an educational tool designed to assist elementary school students in learning mathematics. The system combines OCR capabilities for image processing with Large Language Models to provide interactive, pedagogical support aligned with Brazil's National Common Curricular Base (BNCC).
+![EducAI Logo](assets/logo.png)
 
-### Key Features
-- 🧮 Interactive mathematics tutoring
-- 📸 Image recognition for mathematical problems (OCR)
-- 📊 Graph visualization tools
-- 🔢 Built-in calculator
-- 💬 Natural language conversation
-- 🎯 Guided learning approach (Socratic method)
+**An intelligent mathematics learning assistant for elementary school students**
 
-## 🏗️ Architecture
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python](https://img.shields.io/badge/python-v3.11+-blue.svg)](https://www.python.org/)
+[![React](https://img.shields.io/badge/react-v18.3+-blue.svg)](https://reactjs.org/)
+[![Docker](https://img.shields.io/badge/docker-ready-green.svg)](https://www.docker.com/)
 
-```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│                 │────▶│                 │────▶│                 │
-│  React Frontend │     │  FastAPI Backend│     │  Model Servers  │
-│                 │◀────│                 │◀────│  (OCR + LLM)    │
-└─────────────────┘     └─────────────────┘     └─────────────────┘
-```
+</div>
 
-## 🚀 Quick Start
+## About EducAI
+
+EducAI is an AI-powered educational platform designed to help elementary school students learn mathematics through interactive tools and personalized assistance. Developed as part of the Informatics and Society discipline at UNIFEI (Universidade Federal de Itajubá).
+
+### Team
+- [Gabriel Del Monte Schiavi](https://github.com/gabrieldelmonte)
+- [Gabrielle Gomes Almeida](https://github.com/gavgms12)
+- [Julia Furtado Araujo](https://github.com/Jubss2)
+- [Pedro Di Luca Martins Chaves](https://github.com/PedroWChaves)
+- [Samuel Lima Braz](https://github.com/samuellimabraz) 
+
+## Features
+
+### AI Chat Assistant
+- Natural language understanding for math questions
+- Step-by-step problem-solving guidance
+- Image recognition for handwritten problems (OCR)
+- Personalized learning support
+
+### Interactive Math Tools
+- **📊 Graph Visualizer**: Plot and analyze functions
+- **🍕 Fraction Visualizer**: Visual fraction operations
+- **📏 Number Line**: Interactive number operations
+- **🧮 Calculator**: Smart calculation tool
+- **✏️ Sketch Pad**: Draw and solve problems
+
+## Quick Start
 
 ### Prerequisites
-- Docker & Docker Compose
-- Node.js 18+ (for frontend development)
-- Python 3.10+ (for backend development)
-- NVIDIA GPU (recommended for model inference)
-- 16GB+ RAM minimum
+- Docker and Docker Compose
+- Node.js 18+ (for local development)
+- Python 3.11+ (for local development)
 
-### Environment Setup
+### Installation
 
-1. Clone the repository:
+1. **Clone the repository**
 ```bash
-git clone <repository-url>
-cd eco103
+git clone https://github.com/YOUR_USERNAME/EducAI.git
+cd EducAI
 ```
 
-2. Copy environment template:
+2. **Set up environment variables**
 ```bash
-cp .env.example .env
+cp env.hf.example .env
+# Edit .env with your API keys
 ```
 
-3. Configure your `.env` file with appropriate values.
-
-### Running the Complete Stack
-
+3. **Run with Docker**
 ```bash
-# Start all services
-docker-compose up -d
+# Using Hugging Face endpoints
+docker-compose -f docker-compose.hf.yml up
 
-# View logs
-docker-compose logs -f
-
-# Stop all services
-docker-compose down
+# Or using local models
+docker-compose up
 ```
 
-The services will be available at:
+4. **Access the application**
 - Frontend: http://localhost:3000
 - Backend API: http://localhost:8000
 - API Documentation: http://localhost:8000/docs
-- OlmOCR Server: http://localhost:8001 (AllenAI OlmOCR via vLLM)
-- LLM Server: http://localhost:8002
 
-## 📁 Project Structure
+## Project Structure
 
 ```
-eco103/
-├── backend/            # FastAPI backend application
-│   ├── app/           # Application code
-│   ├── tests/         # Backend tests
-│   └── requirements.txt
-├── frontend/          # React frontend application
-│   ├── src/          # Source code
-│   ├── public/       # Static assets
-│   └── package.json
-├── models/           # Model configuration and scripts
-│   ├── olmocr/      # AllenAI OlmOCR setup (vLLM)
-│   └── llm/         # LLM configuration (vLLM)
-├── docker/          # Docker configurations
-│   ├── backend/
-│   ├── frontend/
-│   └── models/
-├── docs/            # Additional documentation
-├── docker-compose.yml
-├── .env.example
-└── README.md
+EducAI/
+├── backend/           # FastAPI backend
+│   ├── app/          # Application code
+│   │   ├── services/ # AI services (OCR, LLM, Math)
+│   │   └── models.py # Data models
+│   └── Dockerfile
+├── frontend/         # React frontend  
+│   ├── src/
+│   │   ├── components/ # React components
+│   │   └── App.js     # Main app
+│   └── Dockerfile
+├── docker/           # Docker configurations
+├── assets/           # Sample questions and images
+└── docker-compose.yml
 ```
 
-## 🛠️ Development
+## 🔑 Environment Variables
+
+Create a `.env` file with:
+
+```env
+# Database
+POSTGRES_USER=edumath
+POSTGRES_PASSWORD=edumath123
+POSTGRES_DB=edumath_db
+
+# Hugging Face Endpoints (if using)
+OLMOCR_URL=your_olmocr_endpoint
+OLMOCR_API_KEY=your_api_key
+LLM_URL=your_llm_endpoint  
+LLM_API_KEY=your_api_key
+
+# App Configuration
+CORS_ORIGINS=http://localhost:3000
+SECRET_KEY=your-secret-key-change-this
+```
+
+See `env.hf.example` for more details.
+
+## Development
 
 ### Backend Development
-
 ```bash
 cd backend
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+uvicorn app.main:app --reload
 ```
 
 ### Frontend Development
-
 ```bash
 cd frontend
 npm install
 npm start
 ```
 
-### Model Servers
-
-#### OlmOCR2 Server
+### Running Tests
 ```bash
-cd models/olmocr
-docker build -t olmocr2-server .
-docker run -p 8001:8001 --gpus all olmocr2-server
-```
-
-#### LLM Server (using vLLM)
-```bash
-cd models/llm
-docker build -t llm-server .
-docker run -p 8002:8002 --gpus all llm-server
-```
-
-## 🔧 Configuration
-
-### Model Selection
-
-The project supports various open-source models. Configure in `.env`:
-
-```env
-# OlmOCR2 Configuration
-OLMOCR_MODEL=allenai/olmOCR-2-7B-1025-FP8
-OLMOCR_PORT=8001
-
-# LLM Configuration (Choose one)
-LLM_MODEL=Qwen/Qwen2.5-Math-7B-Instruct  # Recommended for math
-# LLM_MODEL=Qwen/Qwen2.5-7B-Instruct
-# LLM_MODEL=meta-llama/Llama-3.2-3B-Instruct
-LLM_PORT=8002
-
-# Backend Configuration
-BACKEND_PORT=8000
-DATABASE_URL=postgresql://user:password@postgres:5432/edumath
-
-# Frontend Configuration
-FRONTEND_PORT=3000
-REACT_APP_API_URL=http://localhost:8000
-```
-
-## 📊 API Endpoints
-
-### Core Endpoints
-
-- `POST /api/chat` - Send message to AI assistant
-- `POST /api/ocr` - Process image for text extraction
-- `GET /api/history` - Get conversation history
-- `POST /api/calculate` - Perform calculations
-- `POST /api/graph` - Generate graph visualization
-
-### Example Request
-
-```python
-import requests
-
-# Send a chat message with image
-response = requests.post(
-    "http://localhost:8000/api/chat",
-    files={"image": open("math_problem.jpg", "rb")},
-    data={"message": "Can you help me solve this problem?"}
-)
-print(response.json())
-```
-
-## 🧑‍🏫 Pedagogical Approach
-
-The AI assistant follows these principles:
-1. **Guided Discovery**: Leads students to find answers themselves
-2. **Step-by-Step**: Breaks complex problems into manageable parts
-3. **Visual Learning**: Uses graphs and visual aids when helpful
-4. **Positive Reinforcement**: Encourages students throughout the process
-5. **BNCC Alignment**: Content aligned with Brazilian educational standards
-
-## 🔒 Security & Privacy
-
-- No personal data storage
-- Session-based interactions only
-- Content filtering for appropriate responses
-- LGPD compliant
-- Parental consent required for usage
-
-## 🧪 Testing
-
-```bash
-# Run backend tests
+# Backend tests
 cd backend
 pytest
 
-# Run frontend tests
+# Frontend tests
 cd frontend
 npm test
-
-# Run integration tests
-docker-compose -f docker-compose.test.yml up
 ```
 
-## 📈 Performance Optimization
+## Technologies Used
 
-- **Model Quantization**: Uses FP8/INT8 quantization for faster inference
-- **Caching**: Redis caching for frequent queries
-- **Batch Processing**: Processes multiple requests efficiently
-- **GPU Acceleration**: CUDA-enabled for optimal performance
+- **Backend**: FastAPI, SQLAlchemy, PostgreSQL, Redis
+- **Frontend**: React, KaTeX, Recharts
+- **AI/ML**: OlmOCR, Qwen Math LLM, vLLM
+- **Infrastructure**: Docker, Docker Compose
+- **Tools**: NumPy, Matplotlib, Sympy
 
-## 🤝 Contributing
+## Contributing
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit changes (`git commit -m 'Add AmazingFeature'`)
-4. Push to branch (`git push origin feature/AmazingFeature`)
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the project
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
-
-## 📝 License
-
-This project is licensed under the MIT License - see LICENSE file for details.
-
-## 👥 Team
-
-- Gabriel Del Monte Schiavi
-- Gabrielle Gomes Almeida
-- Julia Furtado Araujo
-- Pedro Di Luca Martins Chaves
-- Samuel Lima Braz
-
-## 🙏 Acknowledgments
-
-- [AllenAI for OlmOCR](https://github.com/allenai/olmocr) - State-of-the-art OCR for mathematical documents
-- Qwen Team for mathematical LLMs
-- UNIFEI - Federal University of Itajubá
-- Course: Informatics and Society
-
-## 📚 References
-
-### OCR Model
-- **OlmOCR**: [olmOCR: Unlocking Trillions of Tokens in PDFs with Vision Language Models](https://arxiv.org/abs/2502.18443)
-- Model: [allenai/olmOCR-2-7B-1025-FP8](https://huggingface.co/allenai/olmOCR-2-7B-1025-FP8)
-- GitHub: [https://github.com/allenai/olmocr](https://github.com/allenai/olmocr)
-
-## 📞 Support
-
-For questions or issues, please open an issue on GitHub or contact the team.
 
 ---
 
-**Note**: This project is part of the ECO103 - Informatics and Society discipline at UNIFEI and aims to demonstrate the responsible use of AI in education.
+<div align="center">
+Made with ❤️ by UNIFEI Students
+</div>
