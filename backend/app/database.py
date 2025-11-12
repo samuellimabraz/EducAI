@@ -14,15 +14,11 @@ engine = create_async_engine(
     echo=False,
     pool_pre_ping=True,
     pool_size=5,
-    max_overflow=10
+    max_overflow=10,
 )
 
 # Create async session factory
-AsyncSessionLocal = sessionmaker(
-    engine,
-    class_=AsyncSession,
-    expire_on_commit=False
-)
+AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 # Create base class for models
 Base = declarative_base()
@@ -31,6 +27,9 @@ Base = declarative_base()
 async def init_db():
     """Initialize database"""
     try:
+        # Import models to register them
+        from app import db_models  # noqa: F401
+        
         async with engine.begin() as conn:
             # Create tables if they don't exist
             await conn.run_sync(Base.metadata.create_all)

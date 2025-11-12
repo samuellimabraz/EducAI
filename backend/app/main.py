@@ -1,15 +1,16 @@
 """
-EduMath AI - Backend API
+EducAI - Backend API
 Educational Mathematics Assistant for Elementary Students
 """
 
-from fastapi import FastAPI, File, UploadFile, HTTPException, Depends
+from fastapi import FastAPI, File, UploadFile, HTTPException, Depends, Form
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from contextlib import asynccontextmanager
 from typing import Optional, List
 import logging
 import os
+import json
 from pathlib import Path
 
 from app.config import settings
@@ -43,31 +44,31 @@ content_filter = ContentFilter()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage application lifecycle"""
-    logger.info("Starting EduMath AI Backend...")
-
+    logger.info("Starting EducAI Backend...")
+    
     # Initialize database
     await init_db()
-
+    
     # Create upload directory
     Path(settings.UPLOAD_DIR).mkdir(parents=True, exist_ok=True)
-
+    
     # Initialize services
     await ocr_service.initialize()
     await llm_service.initialize()
-
-    logger.info("EduMath AI Backend started successfully!")
-
+    
+    logger.info("EducAI Backend started successfully!")
+    
     yield
-
+    
     # Cleanup
-    logger.info("Shutting down EduMath AI Backend...")
+    logger.info("Shutting down EducAI Backend...")
     await ocr_service.cleanup()
     await llm_service.cleanup()
 
 
 # Create FastAPI app
 app = FastAPI(
-    title="EduMath AI API",
+    title="EducAI API",
     description="Educational Mathematics Assistant API for Elementary Students",
     version="1.0.0",
     lifespan=lifespan,
@@ -89,7 +90,7 @@ app.add_middleware(RateLimitMiddleware)
 @app.get("/")
 async def root():
     """Root endpoint"""
-    return {"name": "EduMath AI API", "version": "1.0.0", "status": "operational"}
+    return {"name": "EducAI API", "version": "1.0.0", "status": "operational"}
 
 
 @app.get("/health")
@@ -117,72 +118,131 @@ async def health_check():
     return health_status
 
 
-@app.post("/api/chat", response_model=ChatResponse)
+@app.post("/api/chat")
 async def chat(
-    message: str,
+    message: str = Form(...),
     image: Optional[UploadFile] = File(None),
-    session_id: Optional[str] = None,
+    session_id: Optional[str] = Form(None),
+    stream: bool = Form(True),
 ):
     """
-    Main chat endpoint for student interaction
+    Main chat endpoint for student interaction with streaming support
 
     Args:
         message: Text message from student
         image: Optional image file containing math problems
         session_id: Optional session ID for conversation continuity
+        stream: Whether to stream the response
 
     Returns:
-        AI response with educational guidance
+        Streaming response with status updates and AI response
     """
-    try:
-        # Content filtering
-        if not await content_filter.is_appropriate(message):
-            return ChatResponse(
-                response="Desculpe, não posso ajudar com esse tipo de conteúdo. Vamos focar em matemática! 📚",
-                session_id=session_id or "new",
-                suggestions=[
-                    "Que tal resolver uma equação?",
-                    "Vamos praticar tabuada?",
-                ],
-            )
 
-        # Process image if provided
-        extracted_text = None
-        if image:
-            if image.content_type not in ["image/jpeg", "image/png", "image/jpg"]:
-                raise HTTPException(
-                    status_code=400, detail="Formato de imagem não suportado"
+    # Pre-process image before streaming starts (to avoid file closure issues)
+    extracted_text = None
+    if image:
+        if image.content_type not in ["image/jpeg", "image/png", "image/jpg"]:
+            raise HTTPException(status_code=400, detail="Unsupported image format")
+        image_path = await save_upload_file(image)
+
+    async def generate_stream():
+        nonlocal extracted_text
+        try:
+            # Content filtering
+            if not await content_filter.is_appropriate(message):
+                error_msg = "Sorry, I cannot help with that type of content. Let's focus on math! 📚"
+                yield f"data: {json.dumps({'type': 'response', 'content': error_msg})}\n\n"
+                yield "data: [DONE]\n\n"
+                return
+
+            # Process image if provided
+            if image:
+                yield f"data: {json.dumps({'type': 'status', 'message': 'Extracting text from image...'})}\n\n"
+
+                try:
+                    extracted_text = await ocr_service.extract_text(image_path)
+                    os.remove(image_path)
+                    yield f"data: {json.dumps({'type': 'status', 'message': 'Text extracted successfully!'})}\n\n"
+                except Exception as e:
+                    logger.error(f"OCR error: {str(e)}")
+                    if os.path.exists(image_path):
+                        os.remove(image_path)
+                    yield f"data: {json.dumps({'type': 'error', 'message': 'Error extracting text from image'})}\n\n"
+                    yield "data: [DONE]\n\n"
+                    return
+
+            # Combine message with extracted text
+            full_prompt = message
+            if extracted_text:
+                full_prompt = (
+                    f"Image text: {extracted_text}\n\nStudent message: {message}"
                 )
 
-            # Save and process image
-            image_path = await save_upload_file(image)
-            extracted_text = await ocr_service.extract_text(image_path)
+            yield f"data: {json.dumps({'type': 'status', 'message': 'Thinking...'})}\n\n"
 
-            # Clean up
-            os.remove(image_path)
+            # Get streaming LLM response
+            async for chunk in llm_service.generate_response_stream(
+                prompt=full_prompt,
+                session_id=session_id or "new",
+                context="elementary_math",
+            ):
+                yield f"data: {json.dumps({'type': 'response', 'content': chunk})}\n\n"
 
-        # Combine message with extracted text
-        full_prompt = message
-        if extracted_text:
-            full_prompt = (
-                f"Texto da imagem: {extracted_text}\\n\\nMensagem do aluno: {message}"
+            yield "data: [DONE]\n\n"
+
+        except Exception as e:
+            logger.error(f"Error in chat endpoint: {str(e)}")
+            yield f"data: {json.dumps({'type': 'error', 'message': 'Oops! Something went wrong. Please try again!'})}\n\n"
+            yield "data: [DONE]\n\n"
+
+    if stream:
+        return StreamingResponse(
+            generate_stream(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
+    else:
+        # Fallback to non-streaming
+        try:
+            if not await content_filter.is_appropriate(message):
+                return ChatResponse(
+                    response="Sorry, I cannot help with that type of content. Let's focus on math! 📚",
+                    session_id=session_id or "new",
+                    suggestions=[],
+                )
+
+            extracted_text = None
+            if image:
+                if image.content_type not in ["image/jpeg", "image/png", "image/jpg"]:
+                    raise HTTPException(
+                        status_code=400, detail="Unsupported image format"
+                    )
+                image_path = await save_upload_file(image)
+                extracted_text = await ocr_service.extract_text(image_path)
+                os.remove(image_path)
+
+            full_prompt = message
+            if extracted_text:
+                full_prompt = (
+                    f"Image text: {extracted_text}\n\nStudent message: {message}"
+                )
+
+            response = await llm_service.generate_response(
+                prompt=full_prompt,
+                session_id=session_id or "new",
+                context="elementary_math",
             )
 
-        # Get LLM response
-        response = await llm_service.generate_response(
-            prompt=full_prompt, session_id=session_id, context="elementary_math"
-        )
+            return ChatResponse(
+                response=response["text"],
+                session_id=response["session_id"],
+                suggestions=response.get("suggestions", []),
+                visualization=response.get("visualization"),
+            )
 
-        return ChatResponse(
-            response=response["text"],
-            session_id=response["session_id"],
-            suggestions=response.get("suggestions", []),
-            visualization=response.get("visualization"),
-        )
-
-    except Exception as e:
-        logger.error(f"Error in chat endpoint: {str(e)}")
-        raise HTTPException(status_code=500, detail="Erro ao processar mensagem")
+        except Exception as e:
+            logger.error(f"Error in chat endpoint: {str(e)}")
+            raise HTTPException(status_code=500, detail="Error processing message")
 
 
 @app.post("/api/ocr")

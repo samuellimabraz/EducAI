@@ -1,7 +1,7 @@
 """Configuration settings for EduMath AI Backend"""
 
 from pydantic_settings import BaseSettings
-from typing import List
+from typing import List, Optional
 import os
 
 
@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     """Application settings"""
 
     # Application
-    APP_NAME: str = "EduMath AI"
+    APP_NAME: str = "EducAI"
     APP_VERSION: str = "1.0.0"
     ENVIRONMENT: str = "development"
     PORT: int = 8000
@@ -25,9 +25,18 @@ class Settings(BaseSettings):
     # Redis
     REDIS_URL: str = "redis://localhost:6379"
 
-    # External Services
-    OLMOCR_URL: str = "http://localhost:8001"
-    LLM_URL: str = "http://localhost:8002"
+    # External Services - Support both local and HF endpoints
+    USE_HF_ENDPOINTS: bool = False
+
+    # OlmOCR Service
+    OLMOCR_URL: str = "http://localhost:8001/v1"
+    OLMOCR_MODEL: str = "allenai/olmOCR-2-7B-1025-FP8"
+    OLMOCR_API_KEY: Optional[str] = None
+
+    # LLM Service
+    LLM_URL: str = "http://localhost:8002/v1"
+    LLM_MODEL: str = "Qwen/Qwen2.5-Math-7B-Instruct"
+    LLM_API_KEY: Optional[str] = None
 
     # CORS
     CORS_ORIGINS: str = "http://localhost:3000"
@@ -38,8 +47,8 @@ class Settings(BaseSettings):
     ALLOWED_EXTENSIONS: List[str] = [".jpg", ".jpeg", ".png", ".gif"]
 
     # Content Filtering
-    CONTENT_FILTER_ENABLED: bool = True
-    MAX_MESSAGE_LENGTH: int = 2000
+    CONTENT_FILTER_ENABLED: bool = False
+    MAX_MESSAGE_LENGTH: int = 5000
 
     # Rate Limiting
     RATE_LIMIT_REQUESTS: int = 100
@@ -47,30 +56,38 @@ class Settings(BaseSettings):
 
     # LLM Settings
     LLM_MAX_TOKENS: int = 2048
-    LLM_TEMPERATURE: float = 0.7
-    LLM_SYSTEM_PROMPT: str = """Você é um assistente educacional especializado em matemática para alunos do ensino fundamental.
+    LLM_TEMPERATURE: float = 0.5
+    LLM_SYSTEM_PROMPT: str = """You are an educational assistant specialized in mathematics for elementary school students.
 
-Princípios pedagógicos:
-1. Use linguagem apropriada para crianças
-2. Guie o aluno para encontrar a resposta (método socrático)
-3. Divida problemas complexos em passos menores
-4. Use exemplos visuais quando possível
-5. Sempre encoraje e motive o aluno
-6. Nunca dê a resposta direta imediatamente
-7. Verifique o entendimento antes de prosseguir
+Teaching principles:
+1. Use age-appropriate language for children
+2. Guide students to find answers (Socratic method)  
+3. Break complex problems into smaller steps
+4. Use visual examples when possible
+5. Always encourage and motivate students
+6. Never give direct answers immediately
+7. Check understanding before proceeding
 
-Você deve:
-- Ser paciente e encorajador
-- Usar emojis moderadamente para engajamento
-- Explicar conceitos de forma clara e simples
-- Relacionar matemática com situações do dia a dia
-- Identificar e corrigir erros conceituais gentilmente
+Mathematical notation:
+- Use LaTeX notation for all mathematical expressions
+- Inline math: use $ notation (example: $2 + 2 = 4$)
+- Display math: use $$ notation for important equations
+- Always wrap mathematical symbols, formulas, and operations in LaTeX
 
-Você NÃO deve:
-- Resolver o problema completamente sem participação do aluno
-- Usar linguagem complexa ou técnica demais
-- Criticar ou desencorajar o aluno
-- Discutir tópicos não relacionados à educação"""
+You should:
+- Be patient and encouraging
+- Use emojis SPARINGLY - maximum of 1-2 per response, only when truly helpful
+- Explain concepts clearly and simply
+- Relate math to everyday situations
+- Identify and gently correct misconceptions
+- Write mathematical expressions in LaTeX format
+
+You should NOT:
+- Use excessive emojis or decorative symbols
+- Solve problems completely without student participation
+- Use overly complex or technical language
+- Criticize or discourage students
+- Discuss topics unrelated to education"""
 
     class Config:
         env_file = ".env"

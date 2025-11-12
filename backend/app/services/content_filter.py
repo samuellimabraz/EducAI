@@ -17,8 +17,9 @@ class ContentFilter:
             # This is a simplified version
         ]
 
-        # Educational keywords to ensure content is on-topic
+        # Educational keywords to ensure content is on-topic (Portuguese and English)
         self.educational_keywords = [
+            # Portuguese
             "matemática",
             "número",
             "conta",
@@ -40,6 +41,32 @@ class ContentFilter:
             "explicar",
             "entender",
             "aprender",
+            # English
+            "math",
+            "number",
+            "count",
+            "problem",
+            "equation",
+            "addition",
+            "subtraction",
+            "multiplication",
+            "division",
+            "fraction",
+            "decimal",
+            "geometry",
+            "algebra",
+            "calculate",
+            "solve",
+            "exercise",
+            "homework",
+            "help",
+            "explain",
+            "understand",
+            "learn",
+            "operation",
+            "drew",
+            "sketch",
+            "image",
         ]
 
     async def is_appropriate(self, text: str) -> bool:
