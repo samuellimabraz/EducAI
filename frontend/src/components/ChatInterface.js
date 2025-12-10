@@ -1,22 +1,80 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Image } from 'lucide-react';
+import { Send, Image, Sparkles } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { InlineMath, BlockMath } from 'react-katex';
 import 'katex/dist/katex.min.css';
 import './ChatInterface.css';
 
-const ChatInterface = ({ messages, onSendMessage, loading, pendingImage, onClearPendingImage }) => {
+const EXAMPLE_QUESTIONS = [
+  {
+    category: 'Calculus',
+    icon: '∫',
+    questions: [
+      'Solve the integral of x²·sin(x) dx',
+      'Find the derivative of ln(x²+1)',
+      'Calculate the limit of (sin x)/x as x→0'
+    ]
+  },
+  {
+    category: 'Algebra',
+    icon: 'x',
+    questions: [
+      'Solve the system: 2x + 3y = 7, x - y = 1',
+      'Factor the polynomial x³ - 6x² + 11x - 6',
+      'Find the roots of x² - 5x + 6 = 0'
+    ]
+  },
+  {
+    category: 'Linear Algebra',
+    icon: '▦',
+    questions: [
+      'Find the eigenvalues of the matrix [[2,1],[1,2]]',
+      'Calculate the determinant of a 3x3 matrix',
+      'Is the set of vectors linearly independent?'
+    ]
+  },
+  {
+    category: 'Statistics',
+    icon: 'σ',
+    questions: [
+      'Calculate the standard deviation of [2,4,4,4,5,5,7,9]',
+      'Find the probability of getting exactly 3 heads in 5 coin flips',
+      'Explain the Central Limit Theorem'
+    ]
+  },
+  {
+    category: 'Geometry',
+    icon: '△',
+    questions: [
+      'Find the area of a triangle with vertices (0,0), (4,0), (2,3)',
+      'Calculate the volume of a cone with radius 3 and height 5',
+      'Prove that the angles of a triangle sum to 180°'
+    ]
+  },
+  {
+    category: 'Number Theory',
+    icon: 'ℕ',
+    questions: [
+      'Find the GCD of 84 and 132',
+      'Prove that √2 is irrational',
+      'List all prime numbers less than 50'
+    ]
+  }
+];
+
+const ChatInterface = ({ messages, onSendMessage, loading, pendingImage, onClearPendingImage, pendingMessage, onClearPendingMessage }) => {
   const [inputMessage, setInputMessage] = useState('');
   const [selectedImage, setSelectedImage] = useState(null);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
+
+  const isEmptyChat = messages.length === 0 || (messages.length === 1 && messages[0].role === 'assistant' && !messages[0].content.includes('?'));
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
   useEffect(() => {
-    // Auto-attach pending image from SketchPad
     if (pendingImage) {
       setSelectedImage(pendingImage);
       if (onClearPendingImage) {
@@ -24,6 +82,15 @@ const ChatInterface = ({ messages, onSendMessage, loading, pendingImage, onClear
       }
     }
   }, [pendingImage, onClearPendingImage]);
+
+  useEffect(() => {
+    if (pendingMessage) {
+      setInputMessage(pendingMessage);
+      if (onClearPendingMessage) {
+        onClearPendingMessage();
+      }
+    }
+  }, [pendingMessage, onClearPendingMessage]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -45,24 +112,17 @@ const ChatInterface = ({ messages, onSendMessage, loading, pendingImage, onClear
     }
   };
 
-  const handleSuggestionClick = (suggestion) => {
-    setInputMessage(suggestion);
+  const handleExampleClick = (question) => {
+    setInputMessage(question);
   };
 
   const renderMessage = (message) => {
-    // Pre-process content to handle both block and inline math
     let processedContent = message.content;
+    processedContent = processedContent.replace(/\\\(([^)]+)\\\)/g, (_, p1) => `$${p1}$`);
+    processedContent = processedContent.replace(/\\\[([^\]]+)\\\]/g, (_, p1) => `$$${p1}$$`);
 
-    // Convert \( ... \) to $ ... $ for inline math
-    processedContent = processedContent.replace(/\\\(([^)]+)\\\)/g, (match, p1) => `$${p1}$`);
-
-    // Convert \[ ... \] to $$ ... $$ for display math
-    processedContent = processedContent.replace(/\\\[([^\]]+)\\\]/g, (match, p1) => `$$${p1}$$`);
-
-    // Custom renderer for math content
     const components = {
       p: ({ children }) => {
-        // Handle array of children
         if (Array.isArray(children)) {
           return (
             <p>
@@ -75,12 +135,9 @@ const ChatInterface = ({ messages, onSendMessage, loading, pendingImage, onClear
             </p>
           );
         }
-
-        const text = String(children);
-        return <p>{renderTextWithMath(text, 0)}</p>;
+        return <p>{renderTextWithMath(String(children), 0)}</p>;
       },
       li: ({ children }) => {
-        // Also handle math in list items
         if (Array.isArray(children)) {
           return (
             <li>
@@ -93,9 +150,7 @@ const ChatInterface = ({ messages, onSendMessage, loading, pendingImage, onClear
             </li>
           );
         }
-
-        const text = String(children);
-        return <li>{renderTextWithMath(text, 0)}</li>;
+        return <li>{renderTextWithMath(String(children), 0)}</li>;
       },
       code: ({ inline, className, children }) => {
         const match = /language-(\w+)/.exec(className || '');
@@ -121,43 +176,32 @@ const ChatInterface = ({ messages, onSendMessage, loading, pendingImage, onClear
   };
 
   const renderTextWithMath = (text, baseIndex) => {
-    // Handle both inline ($...$) and display math ($$...$$)
     const parts = [];
     let lastIndex = 0;
-
-    // First, handle display math ($$...$$)
     const displayMathPattern = /\$\$(.+?)\$\$/gs;
-    const inlineMathPattern = /\$(.+?)\$/g;
-
-    // Split for display math first
-    let tempText = text;
-    let displayMatches = [...tempText.matchAll(displayMathPattern)];
+    const displayMatches = [...text.matchAll(displayMathPattern)];
 
     if (displayMatches.length > 0) {
       displayMatches.forEach((match, idx) => {
         const beforeText = text.substring(lastIndex, match.index);
         if (beforeText) {
-          // Process inline math in the text before display math
           parts.push(...processInlineMath(beforeText, `${baseIndex}-d${idx}-`));
         }
         parts.push(
-          <div key={`${baseIndex}-block-${idx}`} style={{ margin: '1em 0' }}>
+          <div key={`${baseIndex}-block-${idx}`} className="math-block">
             <BlockMath math={match[1]} />
           </div>
         );
         lastIndex = match.index + match[0].length;
       });
 
-      // Process remaining text after last display math
       const remainingText = text.substring(lastIndex);
       if (remainingText) {
         parts.push(...processInlineMath(remainingText, `${baseIndex}-dr-`));
       }
-
       return parts;
     }
 
-    // If no display math, just process inline math
     return processInlineMath(text, `${baseIndex}-`);
   };
 
@@ -165,25 +209,21 @@ const ChatInterface = ({ messages, onSendMessage, loading, pendingImage, onClear
     const mathPattern = /\$(.+?)\$/g;
     const parts = [];
     let lastIndex = 0;
-    let matches = [...text.matchAll(mathPattern)];
+    const matches = [...text.matchAll(mathPattern)];
 
     if (matches.length === 0) {
       return text;
     }
 
     matches.forEach((match, index) => {
-      // Add text before math
       const beforeText = text.substring(lastIndex, match.index);
       if (beforeText) {
         parts.push(<span key={`${keyPrefix}t${index}`}>{beforeText}</span>);
       }
-
-      // Add math
       parts.push(<InlineMath key={`${keyPrefix}m${index}`} math={match[1]} />);
       lastIndex = match.index + match[0].length;
     });
 
-    // Add remaining text
     const remainingText = text.substring(lastIndex);
     if (remainingText) {
       parts.push(<span key={`${keyPrefix}tr`}>{remainingText}</span>);
@@ -195,70 +235,97 @@ const ChatInterface = ({ messages, onSendMessage, loading, pendingImage, onClear
   return (
     <div className="chat-interface">
       <div className="messages-container">
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={`message ${message.role} ${message.isError ? 'error' : ''}`}
-          >
-            <div className="message-avatar">
-              {message.role === 'user' ? '👤' : '🤖'}
+        {isEmptyChat ? (
+          <div className="welcome-screen">
+            <div className="welcome-header">
+              <img src="/logo.png" alt="EducAI" className="welcome-logo" />
+              <h1>EducAI</h1>
+              <p>Professional mathematics assistant</p>
             </div>
-            <div className="message-content">
-              {message.image && (
-                <img
-                  src={message.image}
-                  alt="Uploaded"
-                  className="message-image"
-                />
-              )}
-              {message.status && (
-                <div className="message-status">
-                  <div className="status-indicator"></div>
-                  {message.status}
+            
+            <div className="examples-grid">
+              {EXAMPLE_QUESTIONS.map((category) => (
+                <div key={category.category} className="example-category">
+                  <div className="category-header">
+                    <span className="category-icon">{category.icon}</span>
+                    <span className="category-name">{category.category}</span>
+                  </div>
+                  <div className="category-questions">
+                    {category.questions.map((question, idx) => (
+                      <button
+                        key={idx}
+                        className="example-question"
+                        onClick={() => handleExampleClick(question)}
+                      >
+                        <Sparkles size={14} />
+                        <span>{question}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              )}
-              {message.content && (
-                <div className="message-text">
-                  {renderMessage(message)}
-                  {message.streaming && <span className="streaming-cursor">▊</span>}
-                </div>
-              )}
-              {message.suggestions && (
-                <div className="suggestions">
-                  {message.suggestions.map((suggestion, index) => (
-                    <button
-                      key={index}
-                      className="suggestion-chip"
-                      onClick={() => handleSuggestionClick(suggestion)}
-                    >
-                      {suggestion}
-                    </button>
-                  ))}
-                </div>
-              )}
-              <div className="message-timestamp">
-                {new Date(message.timestamp).toLocaleTimeString('en-US', {
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })}
-              </div>
+              ))}
             </div>
           </div>
-        ))}
+        ) : (
+          <>
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                className={`message ${message.role} ${message.isError ? 'error' : ''}`}
+              >
+                <div className="message-avatar">
+                  {message.role === 'user' ? (
+                    <div className="user-avatar">U</div>
+                  ) : (
+                    <img src="/logo.png" alt="EducAI" className="assistant-avatar" />
+                  )}
+                </div>
+                <div className="message-content">
+                  {message.image && (
+                    <img
+                      src={message.image}
+                      alt="Uploaded"
+                      className="message-image"
+                    />
+                  )}
+                  {message.status && (
+                    <div className="message-status">
+                      <div className="status-indicator" />
+                      {message.status}
+                    </div>
+                  )}
+                  {message.content && (
+                    <div className="message-text">
+                      {renderMessage(message)}
+                      {message.streaming && <span className="streaming-cursor">▊</span>}
+                    </div>
+                  )}
+                  <div className="message-timestamp">
+                    {new Date(message.timestamp).toLocaleTimeString('en-US', {
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </div>
+                </div>
+              </div>
+            ))}
 
-        {loading && (
-          <div className="message assistant">
-            <div className="message-avatar">🤖</div>
-            <div className="message-content">
-              <div className="typing-indicator">
-                <span></span>
-                <span></span>
-                <span></span>
+            {loading && messages[messages.length - 1]?.role !== 'assistant' && (
+              <div className="message assistant">
+                <div className="message-avatar">
+                  <img src="/logo.png" alt="EducAI" className="assistant-avatar" />
+                </div>
+                <div className="message-content">
+                  <div className="typing-indicator">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
+            )}
+          </>
         )}
-
         <div ref={messagesEndRef} />
       </div>
 
@@ -292,7 +359,7 @@ const ChatInterface = ({ messages, onSendMessage, loading, pendingImage, onClear
             type="button"
             className="attach-button"
             onClick={() => fileInputRef.current?.click()}
-            title="Anexar imagem"
+            title="Attach image"
           >
             <Image size={20} />
           </button>
@@ -302,7 +369,7 @@ const ChatInterface = ({ messages, onSendMessage, loading, pendingImage, onClear
             className="message-input"
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
-            placeholder="Digite sua pergunta de matemática..."
+            placeholder="Ask any math question..."
             disabled={loading}
           />
 

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
-import { X, Plus, Grid, Eye, EyeOff, Info } from 'lucide-react';
+import { X, Plus, Eye, EyeOff, MessageSquare, Download } from 'lucide-react';
+import { evaluate } from 'mathjs';
 import './GraphVisualizer.css';
 
-const GraphVisualizer = ({ onClose }) => {
+const GraphVisualizer = ({ onClose, onSendToChat }) => {
   const [functions, setFunctions] = useState([
-    { id: 1, expression: 'x^2', color: '#667eea', visible: true }
+    { id: 1, expression: 'x^2', color: '#6366f1', visible: true }
   ]);
   const [newFunction, setNewFunction] = useState('');
   const [xMin, setXMin] = useState(-10);
@@ -18,16 +19,20 @@ const GraphVisualizer = ({ onClose }) => {
   const [selectedPoint, setSelectedPoint] = useState(null);
   const [evaluateX, setEvaluateX] = useState('');
 
-  const colors = ['#667eea', '#f56565', '#48bb78', '#ed8936', '#9f7aea', '#38b2ac'];
+  const colors = ['#6366f1', '#ef4444', '#22c55e', '#f59e0b', '#a855f7', '#06b6d4'];
 
   const functionTemplates = [
-    { name: 'Line', expr: 'x + 1' },
-    { name: 'Parabola', expr: 'x^2' },
+    { name: 'Linear', expr: 'x + 1' },
+    { name: 'Quadratic', expr: 'x^2' },
     { name: 'Cubic', expr: 'x^3' },
     { name: 'Sine', expr: 'sin(x)' },
     { name: 'Cosine', expr: 'cos(x)' },
+    { name: 'Tangent', expr: 'tan(x)' },
     { name: 'Absolute', expr: 'abs(x)' },
     { name: 'Square Root', expr: 'sqrt(x)' },
+    { name: 'Exponential', expr: 'exp(x)' },
+    { name: 'Logarithm', expr: 'log(x)' },
+    { name: '1/x', expr: '1/x' },
   ];
 
   useEffect(() => {
@@ -35,67 +40,27 @@ const GraphVisualizer = ({ onClose }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [functions, xMin, xMax, yMin, yMax]);
 
-  const preprocessFunction = (func) => {
-    // Convert natural math notation to JavaScript
-    let processed = func.toLowerCase().trim();
-
-    // Replace math functions
-    processed = processed.replace(/sin/g, 'Math.sin');
-    processed = processed.replace(/cos/g, 'Math.cos');
-    processed = processed.replace(/tan/g, 'Math.tan');
-    processed = processed.replace(/sqrt/g, 'Math.sqrt');
-    processed = processed.replace(/abs/g, 'Math.abs');
-    processed = processed.replace(/log/g, 'Math.log');
-    processed = processed.replace(/ln/g, 'Math.log');
-    processed = processed.replace(/pi/g, 'Math.PI');
-    processed = processed.replace(/e(?![a-z])/g, 'Math.E');
-
-    // Add multiplication signs where needed (e.g., 2x -> 2*x)
-    processed = processed.replace(/(\d)([a-z])/g, '$1*$2');
-    processed = processed.replace(/([a-z])(\d)/g, '$1*$2');
-    processed = processed.replace(/\)\(/g, ')*(');
-    processed = processed.replace(/(\d)\(/g, '$1*(');
-    processed = processed.replace(/\)([a-z])/g, ')*$1');
-    processed = processed.replace(/([a-z])\(/g, (match, p1) => {
-      // Don't add * after Math functions
-      if (processed.indexOf('Math.' + p1) !== -1) return match;
-      return p1 + '*(';
-    });
-
-    // Replace ^ with ** for exponentiation
-    processed = processed.replace(/\^/g, '**');
-
-    return processed;
-  };
-
-  const evaluateFunction = (func, x) => {
+  const evaluateFunction = (expression, xValue) => {
     try {
-      const processed = preprocessFunction(func);
-      // Create a safe evaluation context
-      const mathContext = {
-        x: x,
-        Math: Math
-      };
-      // Use Function constructor for safer evaluation
-      const evaluator = new Function('x', 'Math', `return ${processed}`);
-      return evaluator(x, Math);
-    } catch (e) {
+      const result = evaluate(expression, { x: xValue });
+      return typeof result === 'number' ? result : NaN;
+    } catch {
       return NaN;
     }
   };
 
   const generateData = () => {
     const points = [];
-    const step = (xMax - xMin) / 200; // More points for smoother curves
+    const step = (xMax - xMin) / 300;
 
     for (let x = xMin; x <= xMax; x += step) {
-      const point = { x: parseFloat(x.toFixed(3)) };
+      const point = { x: parseFloat(x.toFixed(4)) };
 
-      functions.forEach((func, index) => {
+      functions.forEach((func) => {
         if (func.visible) {
           const y = evaluateFunction(func.expression, x);
           if (!isNaN(y) && isFinite(y) && y >= yMin && y <= yMax) {
-            point[`f${func.id}`] = parseFloat(y.toFixed(3));
+            point[`f${func.id}`] = parseFloat(y.toFixed(4));
           }
         }
       });
@@ -119,7 +84,7 @@ const GraphVisualizer = ({ onClose }) => {
   const addFunction = () => {
     if (!newFunction.trim()) return;
 
-    const newId = Math.max(...functions.map(f => f.id)) + 1;
+    const newId = Math.max(0, ...functions.map(f => f.id)) + 1;
     setFunctions([...functions, {
       id: newId,
       expression: newFunction,
@@ -151,22 +116,80 @@ const GraphVisualizer = ({ onClose }) => {
     if (!evaluateX) return;
 
     const x = parseFloat(evaluateX);
-    const results = functions.map(f => ({
+    const results = functions.filter(f => f.visible).map(f => ({
       expression: f.expression,
-      value: evaluateFunction(f.expression, x)
+      value: evaluateFunction(f.expression, x),
+      color: f.color
     }));
 
     setSelectedPoint({ x, results });
+  };
+
+  const askAboutFunction = (func) => {
+    if (onSendToChat) {
+      const message = `Analyze the function f(x) = ${func.expression}. Describe its properties, domain, range, and key features.`;
+      onSendToChat(message);
+      onClose();
+    }
+  };
+
+  const askAboutAllFunctions = () => {
+    if (onSendToChat && functions.length > 0) {
+      const visibleFuncs = functions.filter(f => f.visible);
+      if (visibleFuncs.length === 1) {
+        askAboutFunction(visibleFuncs[0]);
+      } else {
+        const funcList = visibleFuncs.map((f, i) => `f${i+1}(x) = ${f.expression}`).join(', ');
+        const message = `Compare and analyze these functions: ${funcList}. Describe their properties, intersections, and differences.`;
+        onSendToChat(message);
+        onClose();
+      }
+    }
+  };
+
+  const askAboutPoint = () => {
+    if (onSendToChat && selectedPoint) {
+      const results = selectedPoint.results.map(r => 
+        `f(${selectedPoint.x}) = ${r.value.toFixed(4)} for f(x) = ${r.expression}`
+      ).join('; ');
+      const message = `Explain why at x = ${selectedPoint.x}: ${results}`;
+      onSendToChat(message);
+      onClose();
+    }
+  };
+
+  const exportGraph = () => {
+    const svg = document.querySelector('.graph-container svg');
+    if (svg) {
+      const svgData = new XMLSerializer().serializeToString(svg);
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      
+      img.onload = () => {
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.fillStyle = '#0f0f10';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+        const link = document.createElement('a');
+        link.download = 'graph.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      };
+      
+      img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+    }
   };
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       return (
         <div className="custom-tooltip">
-          <p className="tooltip-label">{`x = ${label}`}</p>
+          <p className="tooltip-label">x = {label}</p>
           {payload.map((entry, index) => (
             <p key={index} style={{ color: entry.color }}>
-              {`y = ${entry.value?.toFixed(2) || 'undefined'}`}
+              y = {entry.value?.toFixed(4) || 'undefined'}
             </p>
           ))}
         </div>
@@ -178,30 +201,60 @@ const GraphVisualizer = ({ onClose }) => {
   return (
     <div className="graph-visualizer">
       <div className="graph-header">
-        <h3>📊 Graph Visualizer</h3>
-        <button className="close-button" onClick={onClose}>
-          <X size={20} />
-        </button>
+        <h3>Graph Visualizer</h3>
+        <div className="header-actions">
+          <button 
+            className="header-btn" 
+            onClick={exportGraph}
+            title="Export as PNG"
+          >
+            <Download size={18} />
+          </button>
+          <button 
+            className="header-btn" 
+            onClick={askAboutAllFunctions}
+            title="Ask about functions"
+          >
+            <MessageSquare size={18} />
+          </button>
+          <button className="close-button" onClick={onClose}>
+            <X size={20} />
+          </button>
+        </div>
       </div>
 
       <div className="graph-controls">
         <div className="function-list">
-          {functions.map((func, index) => (
+          <div className="section-header">
+            <span>Functions</span>
+          </div>
+          {functions.map((func) => (
             <div key={func.id} className="function-item">
               <button
                 className="visibility-toggle"
                 onClick={() => toggleFunction(func.id)}
-                style={{ color: func.color }}
+                style={{ color: func.visible ? func.color : 'var(--text-tertiary)' }}
               >
                 {func.visible ? <Eye size={16} /> : <EyeOff size={16} />}
               </button>
+              <div 
+                className="color-indicator" 
+                style={{ backgroundColor: func.color }}
+              />
               <input
                 type="text"
                 value={func.expression}
                 onChange={(e) => updateFunction(func.id, e.target.value)}
                 className="function-input"
-                style={{ borderColor: func.color }}
+                placeholder="e.g., x^2, sin(x)"
               />
+              <button
+                className="ask-btn"
+                onClick={() => askAboutFunction(func)}
+                title="Ask about this function"
+              >
+                <MessageSquare size={14} />
+              </button>
               {functions.length > 1 && (
                 <button
                   className="remove-function"
@@ -217,27 +270,30 @@ const GraphVisualizer = ({ onClose }) => {
             <div className="add-function">
               <input
                 type="text"
-                placeholder="Add function (e.g., 2x+1, x^3)"
+                placeholder="Add function (e.g., 2*x+1, x^3)"
                 value={newFunction}
                 onChange={(e) => setNewFunction(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && addFunction()}
                 className="function-input"
               />
               <button onClick={addFunction} className="add-button">
-                <Plus size={20} />
+                <Plus size={18} />
               </button>
             </div>
           )}
         </div>
 
         <div className="templates-section">
-          <p className="templates-label">Quick Templates:</p>
+          <div className="section-header">
+            <span>Templates</span>
+          </div>
           <div className="templates">
             {functionTemplates.map((template) => (
               <button
                 key={template.name}
                 className="template-button"
                 onClick={() => setNewFunction(template.expr)}
+                title={template.expr}
               >
                 {template.name}
               </button>
@@ -245,38 +301,59 @@ const GraphVisualizer = ({ onClose }) => {
           </div>
         </div>
 
-        <div className="range-controls">
-          <div className="range-group">
-            <label>X Range:</label>
-            <input
-              type="number"
-              value={xMin}
-              onChange={(e) => setXMin(parseFloat(e.target.value))}
-              className="range-input"
-            />
-            <span>to</span>
-            <input
-              type="number"
-              value={xMax}
-              onChange={(e) => setXMax(parseFloat(e.target.value))}
-              className="range-input"
-            />
+        <div className="controls-row">
+          <div className="range-controls">
+            <div className="range-group">
+              <label>X:</label>
+              <input
+                type="number"
+                value={xMin}
+                onChange={(e) => setXMin(parseFloat(e.target.value) || -10)}
+                className="range-input"
+              />
+              <span>to</span>
+              <input
+                type="number"
+                value={xMax}
+                onChange={(e) => setXMax(parseFloat(e.target.value) || 10)}
+                className="range-input"
+              />
+            </div>
+            <div className="range-group">
+              <label>Y:</label>
+              <input
+                type="number"
+                value={yMin}
+                onChange={(e) => setYMin(parseFloat(e.target.value) || -10)}
+                className="range-input"
+              />
+              <span>to</span>
+              <input
+                type="number"
+                value={yMax}
+                onChange={(e) => setYMax(parseFloat(e.target.value) || 10)}
+                className="range-input"
+              />
+            </div>
           </div>
-          <div className="range-group">
-            <label>Y Range:</label>
-            <input
-              type="number"
-              value={yMin}
-              onChange={(e) => setYMin(parseFloat(e.target.value))}
-              className="range-input"
-            />
-            <span>to</span>
-            <input
-              type="number"
-              value={yMax}
-              onChange={(e) => setYMax(parseFloat(e.target.value))}
-              className="range-input"
-            />
+
+          <div className="display-options">
+            <label>
+              <input
+                type="checkbox"
+                checked={showGrid}
+                onChange={(e) => setShowGrid(e.target.checked)}
+              />
+              Grid
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={showAxes}
+                onChange={(e) => setShowAxes(e.target.checked)}
+              />
+              Axes
+            </label>
           </div>
         </div>
 
@@ -286,7 +363,9 @@ const GraphVisualizer = ({ onClose }) => {
             type="number"
             value={evaluateX}
             onChange={(e) => setEvaluateX(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && evaluatePoint()}
             className="evaluate-input"
+            step="0.1"
           />
           <button onClick={evaluatePoint} className="evaluate-button">
             Calculate
@@ -295,56 +374,55 @@ const GraphVisualizer = ({ onClose }) => {
 
         {selectedPoint && (
           <div className="evaluation-results">
-            <h4>At x = {selectedPoint.x}:</h4>
+            <div className="results-header">
+              <h4>At x = {selectedPoint.x}:</h4>
+              <button 
+                className="ask-result-btn"
+                onClick={askAboutPoint}
+                title="Ask about this point"
+              >
+                <MessageSquare size={14} />
+                Ask
+              </button>
+            </div>
             {selectedPoint.results.map((result, index) => (
-              <p key={index}>
-                f(x) = {result.expression} → y = {result.value.toFixed(3)}
+              <p key={index} style={{ borderLeft: `3px solid ${result.color}` }}>
+                f(x) = {result.expression} → y = {
+                  isNaN(result.value) ? 'undefined' : result.value.toFixed(4)
+                }
               </p>
             ))}
           </div>
         )}
-
-        <div className="display-options">
-          <label>
-            <input
-              type="checkbox"
-              checked={showGrid}
-              onChange={(e) => setShowGrid(e.target.checked)}
-            />
-            Show Grid
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={showAxes}
-              onChange={(e) => setShowAxes(e.target.checked)}
-            />
-            Show Axes
-          </label>
-        </div>
       </div>
 
       <div className="graph-container">
-        <ResponsiveContainer width="100%" height={400}>
-          <LineChart data={graphData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-            {showGrid && <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />}
+        <ResponsiveContainer width="100%" height={350}>
+          <LineChart data={graphData} margin={{ top: 10, right: 30, left: 10, bottom: 10 }}>
+            {showGrid && <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />}
             <XAxis
               dataKey="x"
               domain={[xMin, xMax]}
               type="number"
-              tick={{ fontSize: 12 }}
+              tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }}
+              stroke="var(--border-color)"
+              tickCount={10}
             />
             <YAxis
               domain={[yMin, yMax]}
               type="number"
-              tick={{ fontSize: 12 }}
+              tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }}
+              stroke="var(--border-color)"
+              tickCount={10}
             />
             <Tooltip content={<CustomTooltip />} />
-            <Legend />
+            <Legend 
+              wrapperStyle={{ fontSize: '12px', color: 'var(--text-secondary)' }}
+            />
             {showAxes && (
               <>
-                <ReferenceLine x={0} stroke="#666" strokeWidth={1} />
-                <ReferenceLine y={0} stroke="#666" strokeWidth={1} />
+                <ReferenceLine x={0} stroke="var(--text-tertiary)" strokeWidth={1} />
+                <ReferenceLine y={0} stroke="var(--text-tertiary)" strokeWidth={1} />
               </>
             )}
             {functions.map((func) => (
@@ -357,6 +435,7 @@ const GraphVisualizer = ({ onClose }) => {
                   strokeWidth={2}
                   dot={false}
                   name={`f(x) = ${func.expression}`}
+                  connectNulls={false}
                 />
               )
             ))}

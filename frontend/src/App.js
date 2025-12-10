@@ -2,13 +2,11 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
 import toast, { Toaster } from 'react-hot-toast';
-import { Menu, Plus, Trash2, Calculator as CalcIcon, LineChart, Pencil, PieChart, Hash } from 'lucide-react';
+import { Menu, Plus, Trash2, Calculator as CalcIcon, LineChart, Pencil } from 'lucide-react';
 import ChatInterface from './components/ChatInterface';
 import Calculator from './components/Calculator';
 import GraphVisualizer from './components/GraphVisualizer';
 import SketchPad from './components/SketchPad';
-import FractionVisualizer from './components/FractionVisualizer';
-import NumberLine from './components/NumberLine';
 import './App.css';
 
 // API configuration
@@ -29,9 +27,8 @@ function App() {
   const [showCalculator, setShowCalculator] = useState(false);
   const [showGraph, setShowGraph] = useState(false);
   const [showSketch, setShowSketch] = useState(false);
-  const [showFractions, setShowFractions] = useState(false);
-  const [showNumberLine, setShowNumberLine] = useState(false);
   const [pendingImage, setPendingImage] = useState(null);
+  const [pendingMessage, setPendingMessage] = useState(null);
 
   useEffect(() => {
     // Load chat history for the current session
@@ -51,27 +48,13 @@ function App() {
           }));
           setMessages(formattedMessages);
         } else {
-          // No history, show welcome message
-          setMessages([
-            {
-              id: uuidv4(),
-              role: 'assistant',
-              content: 'Hello! 👋 I\'m your math learning assistant! How can I help you today? You can ask questions, send me problems, or upload images of exercises!',
-              timestamp: new Date(),
-            }
-          ]);
+          // No history, start with empty messages to show welcome screen
+          setMessages([]);
         }
       } catch (error) {
         console.error('Error loading history:', error);
-        // On error, show welcome message
-        setMessages([
-          {
-            id: uuidv4(),
-            role: 'assistant',
-            content: 'Hello! 👋 I\'m your math learning assistant! How can I help you today? You can ask questions, send me problems, or upload images of exercises!',
-            timestamp: new Date(),
-          }
-        ]);
+        // On error, start with empty messages to show welcome screen
+        setMessages([]);
       }
     };
     
@@ -286,7 +269,7 @@ function App() {
         <main className="main-content">
           <header className="app-header">
             <h1>EducAI</h1>
-            <p>Your intelligent mathematics learning assistant</p>
+            <p>Professional mathematics assistant</p>
           </header>
           
           <div className="tool-buttons">
@@ -307,22 +290,6 @@ function App() {
             </button>
             
             <button
-              className={`tool-icon-btn ${showFractions ? 'active' : ''}`}
-              onClick={() => setShowFractions(!showFractions)}
-              title="Fractions"
-            >
-              <PieChart size={18} />
-            </button>
-            
-            <button
-              className={`tool-icon-btn ${showNumberLine ? 'active' : ''}`}
-              onClick={() => setShowNumberLine(!showNumberLine)}
-              title="Number Line"
-            >
-              <Hash size={18} />
-            </button>
-            
-            <button
               className={`tool-icon-btn ${showSketch ? 'active' : ''}`}
               onClick={() => setShowSketch(!showSketch)}
               title="Sketch Pad"
@@ -338,7 +305,9 @@ function App() {
               loading={loading}
               pendingImage={pendingImage}
               onClearPendingImage={() => setPendingImage(null)}
-                />
+              pendingMessage={pendingMessage}
+              onClearPendingMessage={() => setPendingMessage(null)}
+            />
           </div>
         </main>
       </div>
@@ -347,28 +316,26 @@ function App() {
       {showCalculator && (
         <>
           <div className="modal-backdrop" onClick={() => setShowCalculator(false)} />
-          <Calculator onClose={() => setShowCalculator(false)} />
+          <Calculator 
+            onClose={() => setShowCalculator(false)} 
+            onSendToChat={(message) => {
+              setPendingMessage(message);
+              setShowCalculator(false);
+            }}
+          />
         </>
       )}
       
       {showGraph && (
         <>
           <div className="modal-backdrop" onClick={() => setShowGraph(false)} />
-          <GraphVisualizer onClose={() => setShowGraph(false)} />
-        </>
-      )}
-      
-      {showFractions && (
-        <>
-          <div className="modal-backdrop" onClick={() => setShowFractions(false)} />
-          <FractionVisualizer onClose={() => setShowFractions(false)} />
-        </>
-      )}
-      
-      {showNumberLine && (
-        <>
-          <div className="modal-backdrop" onClick={() => setShowNumberLine(false)} />
-          <NumberLine onClose={() => setShowNumberLine(false)} />
+          <GraphVisualizer 
+            onClose={() => setShowGraph(false)} 
+            onSendToChat={(message) => {
+              setPendingMessage(message);
+              setShowGraph(false);
+            }}
+          />
         </>
       )}
       

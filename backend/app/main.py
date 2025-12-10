@@ -150,7 +150,7 @@ async def chat(
         try:
             # Content filtering
             if not await content_filter.is_appropriate(message):
-                error_msg = "Sorry, I cannot help with that type of content. Let's focus on math! 📚"
+                error_msg = "I can only assist with mathematics-related questions. Please rephrase your query."
                 yield f"data: {json.dumps({'type': 'response', 'content': error_msg})}\n\n"
                 yield "data: [DONE]\n\n"
                 return
@@ -206,7 +206,7 @@ async def chat(
         try:
             if not await content_filter.is_appropriate(message):
                 return ChatResponse(
-                    response="Sorry, I cannot help with that type of content. Let's focus on math! 📚",
+                    response="I can only assist with mathematics-related questions. Please rephrase your query.",
                     session_id=session_id or "new",
                     suggestions=[],
                 )
