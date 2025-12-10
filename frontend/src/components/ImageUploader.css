@@ -1,44 +1,45 @@
-/* Image Uploader Styles */
+/* Image Uploader - Dark Theme */
 .image-uploader {
-  border: 2px dashed #cbd5e0;
-  border-radius: 0.75rem;
+  border: 2px dashed var(--border-color);
+  border-radius: 12px;
   padding: 2rem;
   text-align: center;
   cursor: pointer;
-  transition: all 0.3s;
-  background: #f7fafc;
+  transition: all 0.2s ease;
+  background: var(--bg-tertiary);
 }
 
 .image-uploader:hover {
-  border-color: #667eea;
-  background: #eef2ff;
+  border-color: var(--accent-color);
+  background: var(--bg-hover);
 }
 
 .image-uploader.drag-active {
-  border-color: #667eea;
-  background: #eef2ff;
-  transform: scale(1.02);
+  border-color: var(--accent-color);
+  background: rgba(99, 102, 241, 0.1);
+  transform: scale(1.01);
 }
 
 .uploader-content {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.75rem;
-  color: #4a5568;
+  gap: 12px;
+  color: var(--text-secondary);
 }
 
 .uploader-content svg {
-  color: #667eea;
+  color: var(--accent-color);
 }
 
 .uploader-content p {
   margin: 0;
   font-weight: 500;
   font-size: 1rem;
+  color: var(--text-primary);
 }
 
 .upload-hint {
   font-size: 0.875rem;
-  color: #718096;
+  color: var(--text-tertiary);
 }

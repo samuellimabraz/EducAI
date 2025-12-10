@@ -1,19 +1,43 @@
+# Build stage - install dependencies
+FROM python:3.11-slim AS builder
+
+WORKDIR /app
+
+# Install build dependencies only if needed (for packages without wheels)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create virtual environment
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Runtime stage - minimal image
 FROM python:3.11-slim
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y \
-    gcc \
-    g++ \
+# Install only runtime dependencies (curl for healthcheck, libpq for asyncpg)
+RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
-    && rm -rf /var/lib/apt/lists/*
+    libpq5 \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
 
-COPY requirements.txt .
+# Copy virtual environment from builder
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
-RUN pip install --no-cache-dir -r requirements.txt
-
+# Copy application code
 COPY app/ ./app/
 
+# Create uploads directory
 RUN mkdir -p /app/uploads
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \

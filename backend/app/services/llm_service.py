@@ -77,15 +77,19 @@ class LLMService:
 
             messages.append({"role": "user", "content": prompt})
 
+            request_body = {
+                "model": self.model_name,
+                "messages": messages,
+                "temperature": settings.LLM_TEMPERATURE,
+                "max_tokens": settings.LLM_MAX_TOKENS,
+                "stream": False,
+            }
+            if settings.LLM_SERVICE_TIER:
+                request_body["service_tier"] = settings.LLM_SERVICE_TIER
+
             response = await self.client.post(
                 f"{self.base_url}/chat/completions",
-                json={
-                    "model": self.model_name,
-                    "messages": messages,
-                    "temperature": settings.LLM_TEMPERATURE,
-                    "max_tokens": settings.LLM_MAX_TOKENS,
-                    "stream": False,
-                },
+                json=request_body,
             )
             response.raise_for_status()
 
@@ -158,16 +162,20 @@ class LLMService:
 
             # Stream response from LLM
             full_response = ""
+            request_body = {
+                "model": self.model_name,
+                "messages": messages,
+                "temperature": settings.LLM_TEMPERATURE,
+                "max_tokens": settings.LLM_MAX_TOKENS,
+                "stream": True,
+            }
+            if settings.LLM_SERVICE_TIER:
+                request_body["service_tier"] = settings.LLM_SERVICE_TIER
+
             async with self.client.stream(
                 "POST",
                 f"{self.base_url}/chat/completions",
-                json={
-                    "model": self.model_name,
-                    "messages": messages,
-                    "temperature": settings.LLM_TEMPERATURE,
-                    "max_tokens": settings.LLM_MAX_TOKENS,
-                    "stream": True,
-                },
+                json=request_body,
             ) as response:
                 response.raise_for_status()
 
@@ -201,7 +209,7 @@ class LLMService:
 
             logger.error(f"Error streaming LLM response: {str(e)}")
             logger.error(f"Traceback: {traceback.format_exc()}")
-            yield "Sorry, I encountered an error. Please try again."
+            yield "An error occurred while processing your request. Please try again."
 
     async def get_session_history(self, session_id: str) -> List[Dict]:
         """Get conversation history for a session from database"""

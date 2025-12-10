@@ -1,5 +1,5 @@
-import React, { useRef, useState, useEffect } from 'react';
-import { X, Eraser, Pencil, Download, Trash2 } from 'lucide-react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
+import { X, Eraser, Pencil, Download, Trash2, Undo2 } from 'lucide-react';
 import './SketchPad.css';
 
 const SketchPad = ({ onClose, onSave }) => {
@@ -7,31 +7,54 @@ const SketchPad = ({ onClose, onSave }) => {
   const [isDrawing, setIsDrawing] = useState(false);
   const [color, setColor] = useState('#000000');
   const [lineWidth, setLineWidth] = useState(2);
-  const [tool, setTool] = useState('pencil'); // 'pencil' or 'eraser'
+  const [tool, setTool] = useState('pencil');
+  const [history, setHistory] = useState([]);
 
-  useEffect(() => {
+  const saveToHistory = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const imageData = canvas.toDataURL();
+      setHistory(prev => [...prev, imageData]);
+    }
+  }, []);
+
+  const initCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (canvas) {
       const ctx = canvas.getContext('2d');
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
-      
-      // Set white background
       ctx.fillStyle = 'white';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
+      saveToHistory();
     }
-  }, []);
+  }, [saveToHistory]);
+
+  useEffect(() => {
+    initCanvas();
+  }, [initCanvas]);
+
+  const getCanvasCoordinates = (e) => {
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    
+    return {
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY
+    };
+  };
 
   const startDrawing = (e) => {
+    saveToHistory();
+    
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
-    const rect = canvas.getBoundingClientRect();
+    const { x, y } = getCanvasCoordinates(e);
     
     ctx.beginPath();
-    ctx.moveTo(
-      e.clientX - rect.left,
-      e.clientY - rect.top
-    );
+    ctx.moveTo(x, y);
     setIsDrawing(true);
   };
 
@@ -40,15 +63,12 @@ const SketchPad = ({ onClose, onSave }) => {
     
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
-    const rect = canvas.getBoundingClientRect();
+    const { x, y } = getCanvasCoordinates(e);
     
     ctx.strokeStyle = tool === 'eraser' ? 'white' : color;
     ctx.lineWidth = tool === 'eraser' ? lineWidth * 4 : lineWidth;
     
-    ctx.lineTo(
-      e.clientX - rect.left,
-      e.clientY - rect.top
-    );
+    ctx.lineTo(x, y);
     ctx.stroke();
   };
 
@@ -56,7 +76,27 @@ const SketchPad = ({ onClose, onSave }) => {
     setIsDrawing(false);
   };
 
+  const undo = () => {
+    if (history.length <= 1) return;
+    
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    
+    const newHistory = history.slice(0, -1);
+    const previousState = newHistory[newHistory.length - 1];
+    
+    const img = new Image();
+    img.onload = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0);
+    };
+    img.src = previousState;
+    
+    setHistory(newHistory);
+  };
+
   const clearCanvas = () => {
+    saveToHistory();
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     ctx.fillStyle = 'white';
@@ -128,6 +168,15 @@ const SketchPad = ({ onClose, onSave }) => {
 
         <div className="toolbar-spacer"></div>
 
+        <button 
+          className="tool-btn" 
+          onClick={undo} 
+          title="Undo"
+          disabled={history.length <= 1}
+        >
+          <Undo2 size={18} />
+        </button>
+
         <button className="tool-btn" onClick={clearCanvas} title="Clear">
           <Trash2 size={18} />
         </button>
@@ -137,16 +186,18 @@ const SketchPad = ({ onClose, onSave }) => {
         </button>
       </div>
 
-      <canvas
-        ref={canvasRef}
-        width={500}
-        height={400}
-        className="sketch-canvas"
-        onMouseDown={startDrawing}
-        onMouseMove={draw}
-        onMouseUp={stopDrawing}
-        onMouseLeave={stopDrawing}
-      />
+      <div className="sketch-canvas-container">
+        <canvas
+          ref={canvasRef}
+          width={500}
+          height={400}
+          className="sketch-canvas"
+          onMouseDown={startDrawing}
+          onMouseMove={draw}
+          onMouseUp={stopDrawing}
+          onMouseLeave={stopDrawing}
+        />
+      </div>
 
       <div className="sketch-footer">
         <button className="save-sketch-btn" onClick={saveDrawing}>
@@ -158,4 +209,3 @@ const SketchPad = ({ onClose, onSave }) => {
 };
 
 export default SketchPad;
-

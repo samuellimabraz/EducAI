@@ -1,10 +1,10 @@
-# EducAI - Educational AI Assistant for Elementary Mathematics
+# EducAI - Professional Mathematics Assistant
 
 <div align="center">
 
 ![EducAI Logo](assets/logo.png)
 
-**An intelligent mathematics learning assistant for elementary school students**
+**An intelligent AI-powered mathematics assistant for all skill levels**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/badge/python-v3.11+-blue.svg)](https://www.python.org/)
@@ -15,7 +15,9 @@
 
 ## About EducAI
 
-EducAI is an AI-powered educational platform designed to help elementary school students learn mathematics through interactive tools and personalized assistance. Developed as part of the Informatics and Society discipline at UNIFEI (Universidade Federal de Itajubá).
+EducAI is an AI-powered mathematics platform designed to assist users of all levels—from students to professionals—in solving mathematical problems through interactive tools and intelligent assistance. Whether you need help with basic algebra or advanced calculus, EducAI provides step-by-step guidance and powerful visualization tools.
+
+Developed as part of the Informatics and Society discipline at UNIFEI (Universidade Federal de Itajubá).
 
 ### Team
 - [Gabriel Del Monte Schiavi](https://github.com/gabrieldelmonte)
@@ -30,14 +32,18 @@ EducAI is an AI-powered educational platform designed to help elementary school 
 - Natural language understanding for math questions
 - Step-by-step problem-solving guidance
 - Image recognition for handwritten problems (OCR)
-- Personalized learning support
+- Support for complex mathematical topics:
+  - Calculus (derivatives, integrals, limits)
+  - Linear Algebra (matrices, eigenvalues, vector spaces)
+  - Statistics & Probability
+  - Number Theory
+  - Geometry
+  - And more...
 
 ### Interactive Math Tools
-- **📊 Graph Visualizer**: Plot and analyze functions
-- **🍕 Fraction Visualizer**: Visual fraction operations
-- **📏 Number Line**: Interactive number operations
-- **🧮 Calculator**: Smart calculation tool
-- **✏️ Sketch Pad**: Draw and solve problems
+- **📊 Graph Visualizer**: Plot and analyze mathematical functions with support for trigonometric, exponential, and polynomial functions
+- **🧮 Calculator**: Smart calculation tool for quick computations
+- **✏️ Sketch Pad**: Draw mathematical diagrams and handwritten problems for OCR analysis
 
 ## Quick Start
 
@@ -89,7 +95,7 @@ EducAI/
 │   │   └── App.js     # Main app
 │   └── Dockerfile
 ├── docker/           # Docker configurations
-├── assets/           # Sample questions and images
+├── assets/           # Logo and sample images
 └── docker-compose.yml
 ```
 
@@ -146,7 +152,7 @@ npm test
 ## Technologies Used
 
 - **Backend**: FastAPI, SQLAlchemy, PostgreSQL, Redis
-- **Frontend**: React, KaTeX, Recharts
+- **Frontend**: React, KaTeX, Recharts, Math.js
 - **AI/ML**: OlmOCR, Qwen Math LLM, vLLM
 - **Infrastructure**: Docker, Docker Compose
 - **Tools**: NumPy, Matplotlib, Sympy
